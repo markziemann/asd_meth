@@ -1,6 +1,6 @@
 ---
 title: "Autism Spectrum Disorder Methylation analysis - blood analysis"
-author: "Mark Ziemann"
+author: "Namitha Mohandras, Mark Ziemann"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -35,6 +35,8 @@ library("WGCNA")
 library("FlowSorted.Blood.450k")
 library("reshape2")
 library("ggplot2")
+library("missMethyl")
+library("DMRcate")
 
 ```
 
@@ -78,7 +80,6 @@ plot(hr)
 
 detP = detectionP(rgSet)
 qcReport(rgSet, sampNames = targets_gen$Sample_Name, pdf="qc-report_ASD_blood_nov27.pdf")
-par(mfrow=c(1,2))
 cols=brewer.pal(4,"Set1")
 
 barplot(apply(detP,2,mean),
@@ -120,6 +121,8 @@ mdsPlot(mset.raw, sampGroups = targets_gen$Sex,
 
 ## Normalisation
 
+SQN is used as it gave a more stable result.
+
 ```{r,norm1}
 
 mSetSw = preprocessSWAN(rgSet)
@@ -129,7 +132,6 @@ densityPlot(getBeta(mSetSw),main="SWAN")
 #SQN method
 mSetSq = preprocessQuantile(rgSet)
 
-par(mfrow=c(1,3))
 
 densityPlot(rgSet, sampGroups = targets_gen$Social_interaction_on_ADOS,
   main="Raw", legend = FALSE)
@@ -147,6 +149,8 @@ par(mfrow=c(1,1))
 ```
 
 ## Cell type composition analysis
+
+Need to consider using estimatecellcounts2.
 
 ```{r,celltypes1}
 
@@ -213,14 +217,14 @@ gmSetSw <- gmSetSw[noXreact,]
 
 #Removing probes on X and Y chromosomes
 autosomes <- !(featureNames(gmSetSw) %in% ann$Name[ann$chr %in% c("chrX","chrY")])
-gmSetSwFlt <- gmSetSw[autosomes,]
+gmSetSqFlt <- gmSetSq[autosomes,]
 
 #Relative log expression (RLE plot)
-mValsSw = getM(gmSetSwFlt)
-medSw = apply(mValsSw, 1, median)
-YSw = mValsSw - medSw
+mValsSq = getM(gmSetSqFlt)
+medSq = apply(mValsSq, 1, median)
+YSq = mValsSq - medSq
 
-boxplot(YSw,outline=FALSE,ylim=c(-1.5,1.5), 
+boxplot(YSq,outline=FALSE,ylim=c(-1.5,1.5), 
   ylab="Relative Log Methylation Value", 
   cols=as.character(factor(targets_gen$Social_interaction_on_ADOS,)) )
 
@@ -232,27 +236,27 @@ boxplot(YSw,outline=FALSE,ylim=c(-1.5,1.5),
 ```{r,mds2}
 
 pal = brewer.pal(8, "Dark2")
-mds1Sw = plotMDS(mValsSw, top=1000, gene.selection="common",dim.plot=c(1,2))
-mds2Sw = plotMDS(mValsSw, top=1000, gene.selection="common",dim.plot=c(1,3))
-mds3Sw = plotMDS(mValsSw, top=1000, gene.selection="common",dim.plot=c(2,3))
-mds4Sw = plotMDS(mValsSw, top=1000, gene.selection="common",dim.plot=c(3,4))
+mds1Sq = plotMDS(mValsSq, top=1000, gene.selection="common",dim.plot=c(1,2))
+mds2Sq = plotMDS(mValsSq, top=1000, gene.selection="common",dim.plot=c(1,3))
+mds3Sq = plotMDS(mValsSq, top=1000, gene.selection="common",dim.plot=c(2,3))
+mds4Sq = plotMDS(mValsSq, top=1000, gene.selection="common",dim.plot=c(3,4))
 
-plotMDS(mds1Sw, xlab="Dimension 1", ylab="Dimension 2",
+plotMDS(mds1Sq, xlab="Dimension 1", ylab="Dimension 2",
   col=pal[as.factor(targets_gen$Diagnosis)],
   dim=c(1,2), labels=targets_gen$Sample_Name)
 legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
 
-plotMDS(mds2Sw, xlab="Dimension 1", ylab="Dimension 3",
+plotMDS(mds2Sq, xlab="Dimension 1", ylab="Dimension 3",
   col=pal[as.factor(targets_gen$Diagnosis)],dim=c(1,3),
   labels=targets_gen$Sample_Name)
 legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
 
-plotMDS(mds3Sw, xlab="Dimension 2", ylab="Dimension 3",
+plotMDS(mds3Sq, xlab="Dimension 2", ylab="Dimension 3",
   col=pal[as.factor(targets_gen$Diagnosis)],dim=c(2,3),
   labels=targets_gen$Sample_Name)
 legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
 
-plotMDS(mds4Sw, xlab="Dimension 3", ylab="Dimension 4",
+plotMDS(mds4Sq, xlab="Dimension 3", ylab="Dimension 4",
   col=pal[as.factor(targets_gen$Diagnosis)],dim=c(3,4),
   labels=targets_gen$Sample_Name)
 legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
@@ -263,16 +267,17 @@ legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
 
 ```{r,pca1}
 
-fit <- prcomp(t(mValsSw),center = TRUE, scale = TRUE,retx=TRUE)
+fit <- prcomp(t(mValsSq),center = TRUE, scale = TRUE,retx=TRUE)
 loadings = fit$x
 plot(fit,type="lines")
-nGenes = nrow(mValsSw)
-nSamples = ncol(mValsSw)
+nGenes = nrow(mValsSq)
+nSamples = ncol(mValsSq)
 datTraits = targets_gen[,7:15]
 moduleTraitCor = cor(loadings[,1:6], datTraits, use = "p")
 moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
 par(cex=0.75, mar = c(6, 8.5, 3, 3))
-textMatrix = paste(signif(moduleTraitCor, 2), "\n(", signif(moduleTraitPvalue, 1), ")", sep = "");
+textMatrix = paste(signif(moduleTraitCor, 2), "\n(", 
+  signif(moduleTraitPvalue, 1), ")", sep = "");
 dim(textMatrix) = dim(moduleTraitCor)
 
 labeledHeatmap(Matrix = t(moduleTraitCor), 
@@ -284,165 +289,227 @@ labeledHeatmap(Matrix = t(moduleTraitCor),
 
 ```
 
-#Regression analysis - within twin pair on ADOS
-mDat = mValsSw
+## Regression analysis - within twin pair on ADOS
+
+ADOS is the outcome variable (continuous)
+
+```{r,reg1}
+
+mDat = mValsSq
 Twin_Group <- factor(targets_gen$Family_ID)
-#ADOS is the outcome variable (continuous)
-ADOS=targets_gen$Social_interaction_on_ADOS
-design_tw <- model.matrix(~ADOS+Twin_Group)
-#design <- model.matrix(~targets_gen$Social_interaction_on_ADOS)
+ADOS <- targets_gen$Social_interaction_on_ADOS
+
+design_tw <- model.matrix(~ Twin_Group + ADOS )
+
 fit_tw <- lmFit(mDat, design_tw)
 fit2_tw <- eBayes(fit_tw)
 summary(decideTests(fit2_tw))
-top = topTable(fit2_tw,coef="ADOS",num=Inf, sort.by = "P")
+top <- topTable(fit2_tw,coef="ADOS",num=Inf, sort.by = "P")
 head(top)
 nsig <- sum(top$adj.P.Val < 0.05)
 sum(top$P.Value< 0.05)
+
 ann_sub = 
-  ann[,c("chr","pos","strand","Name","Islands_Name","Relation_to_Island","UCSC_RefGene_Name","UCSC_RefGene_Group")]
-output = merge(ann_sub,top,by.x="Name",by.y="row.names")
-write.csv(output[order(output$P.Value),],file="ASD_blood_top_dmps_onADOS_withintw_Nov27_limma.csv",row.names=FALSE)
+  ann[,c("chr","pos","strand","Name","Islands_Name",
+    "Relation_to_Island","UCSC_RefGene_Name","UCSC_RefGene_Group")]
 
-top1000 = topTable(fit2_tw,coef="ADOS",num=1000, sort.by = "P")
-output_1000 = merge(ann_sub,top1000,by.x="Name",by.y="row.names")
-write.csv(output_1000[order(output_1000$P.Value),],file="ASD_blood_top_dmps_onADOS_Nov27_withintw_limma_top1k.csv",row.names=FALSE)
+output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 
-#Converting to beta from M values
+write.csv(output[order(output$P.Value),],
+  file="ASD_blood_top_dmps_onADOS_withintw_Nov27_limma.csv",row.names=FALSE)
+
+top1000 <- topTable(fit2_tw,coef="ADOS",num=1000, sort.by = "P")
+output_1000 <- merge(ann_sub,top1000,by.x="Name",by.y="row.names")
+
+write.csv(output_1000[order(output_1000$P.Value),],
+  file="ASD_blood_top_dmps_onADOS_Nov27_withintw_limma_top1k.csv",row.names=FALSE)
+
+```
+
+## Converting to beta from M values
+
+```{r,betavals1}
+
 bDat = ilogit2(mDat)
 bDat_new = getBeta(gmSetSqFlt)
 #View(bDat)
 write.csv(bDat,file="ASD_blood_beta_onADOS_withintw_Nov27.csv",row.names=TRUE)
 
-#RUV
-#extract illumina negative control
+```
+
+## RUV
+
+Extract illumina negative control
+
+```{r,ruv1}
+
+#Extract illumina negative control
 INCs <- getINCs(rgSet)
 head(INCs)
 #add negative control data to M-values
-Mc <- rbind(mValsSw,INCs)
+Mc <- rbind(mValsSq,INCs)
 ctl <- rownames(Mc) %in% rownames(INCs)
 table(ctl)
 
-rfit1 <- RUVfit(data=Mc, design=design_tw, coef=2, ctl=ctl) # Stage 1 analysis
-rfit2 <- RUVadj(rfit1)
+#old RUV syntax is updated
+#rfit1 <- RUVfit(data=Mc, design=design_tw, coef=2, ctl=ctl) # Stage 1 analysis
+
+# this is the updatedcommand - not sure if correct
+rfit1 <- RUVfit(Y = Mc, X = design_tw[,"ADOS"] , ctl = ctl) # Stage 1 analysis
+
+rfit2 <- RUVadj(Y = Mc, fit = rfit1)
+
 top1 <- topRUV(rfit2, num=Inf)
+
 head(top1)
-#ctl <- rownames(mValsSw) %in% rownames(top1[top1$p.ebayes > 0.5,])
+
+#ctl <- rownames(mValsSq) %in% rownames(top1[top1$p.ebayes > 0.5,])
 #bottom 80% used as negative controls
-ctl <- rownames(mValsSw) %in% rownames(top1[ceiling(0.2*nrow(top1)):nrow(top1),])
+ctl <- rownames(mValsSq) %in% rownames(top1[ceiling(0.2*nrow(top1)):nrow(top1),])
 table(ctl)
+
 # Perform RUV adjustment and fit
-rfit1 <- RUVfit(data=mValsSw, design=design_tw, coef=2, ctl=ctl) # Stage 2 analysis 
-rfit2 <- RUVadj(rfit1)
-top_ruv = topRUV(rfit2, number = Inf)
-top_ruv_1000 = topRUV(rfit2, number = 1000)
+rfit1 <- RUVfit(Y = mValsSq, X=design_tw[,"ADOS"], ctl=ctl) # Stage 2 analysis 
+rfit2 <- RUVadj(Y = mValsSq, fit=rfit1)
+top_ruv <- topRUV(rfit2, number = Inf)
+top_ruv_1000 <- topRUV(rfit2, number = 1000)
 head(top_ruv_1000)
-#dat_subset_ruv = as.matrix(subset(mValsSw, rownames(mValsSw) %in% rownames(top_ruv_1000)))
+#dat_subset_ruv = as.matrix(subset(mValsSq, rownames(mValsSq) %in% rownames(top_ruv_1000)))
 #heatmap.2(dat_subset_ruv, cexRow=0.8, cexCol=0.8, col=colorRampPalette(c("Blue","Yellow")), density.info="none", trace="none", scale="row", main="diff meth probes due to epilepsy")
 output_ruv = merge(ann,top_ruv,by.x="Name",by.y="row.names")
 output_ruv_1000 = merge(ann,top_ruv_1000,by.x="Name",by.y="row.names")
 #output_full_epicanno = merge(ann_epic,top,by.x="Name",by.y="row.names")
-write.csv(output_ruv[order(output_ruv$p.ebayes),],file="ASD_blood_topruv80%_dmps_onADOS_withintw_Nov29.csv",row.names=FALSE)
-write.csv(output_ruv_1000[order(output_ruv_1000$p.ebayes),],file="ASD_blood_topruv80%_1kdmps_onADOS_withintw_Nov29.csv",row.names=FALSE)
 
-#To visualise the effect of RUV adjustment
-if (!requireNamespace("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-BiocManager::install("missMethyl", version = "3.8")
+write.csv(output_ruv[order(output_ruv$F.p),],
+  file="ASD_blood_topruv80%_dmps_onADOS_withintw_Nov29.csv",
+  row.names=FALSE)
 
-##to update bioconductor - from Javana (jane's email)
-install.packages("BiocManager")
-BiocManager::version()
-BiocManager::valid(lib.loc = .libPaths()[1])
-BiocManager::install(lib.loc = .libPaths()[1])
+write.csv(output_ruv_1000[order(output_ruv_1000$F.p),],
+  file="ASD_blood_topruv80%_1kdmps_onADOS_withintw_Nov29.csv",
+  row.names=FALSE)
+
+```
+
+## Visualise the effect of RUV adjustment
+
+```{r,ruv2}
 
 #Madj <- getAdjusted(mValsSw, rfit2)
-Madj <- missMethyl::getAdjusted(mValsSw, rfit2)
+# cant get this part to work
+mValsSq <- mValsSq[which(rownames(mValsSq) %in% colnames(rfit2$Y) ),]
+#Madj <- missMethyl::getAdj(Y = mValsSq, fit = rfit2)
 
-par(mfrow=c(1,2))
-plotMDS(mValsSw, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Social_interaction_on_ADOS)),
-        main="Unadjusted")
+plotMDS(mValsSq, labels=targets_gen$Sample_Name,
+  col=as.integer(factor(targets_gen$Social_interaction_on_ADOS)),
+  main="Unadjusted")
+
 #legend(legend=c("1","0"),pch=7,cex=0.7,col=1:2)
 
-plotMDS(Madj, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Social_interaction_on_ADOS)),
-        main="Adjusted: RUV-inverse")
+# i had to comment the below stuff out because Madj couldn't be generated.
+#plotMDS(Madj, labels=targets_gen$Sample_Name, 
+#  col=as.integer(factor(targets_gen$Social_interaction_on_ADOS)),
+#  main="Adjusted: RUV-inverse")
 #legend(legend=c("1","0"),pch=7,cex=0.7,col=1:2)
 
 #Trying different k values
-rfit3 <- RUVfit(data=mValsSw, design=design_tw, coef=2, ctl=ctl, method = "ruv4", k=1) # Stage 2 analysis 
-rfit4 <- RUVadj(rfit1)
+# mark fixed a major bug here
+rfit_k1 <- RUVfit(Y=mValsSq, X=design_tw[,"ADOS"], ctl=ctl, 
+  method = "ruv4", k=1) # Stage 2 analysis 
 
-rfit5 <- RUVfit(data=mValsSw, design=design_tw, coef=2, ctl=ctl, method = "ruv4", k=2) # Stage 2 analysis 
-rfit6 <- RUVadj(rfit1)
+rfit_k1 <- RUVadj(Y=mValsSq, fit=rfit_k1)
 
-rfit7 <- RUVfit(data=mValsSw, design=design_tw, coef=2, ctl=ctl, method = "ruv4", k=8) # Stage 2 analysis 
-rfit8 <- RUVadj(rfit1)
+rfit_k2 <- RUVfit(Y=mValsSq, X=design_tw[,"ADOS"], ctl=ctl,
+  method = "ruv4", k=2) # Stage 2 analysis 
 
-#get adjusted values
-Madj1 <- missMethyl::getAdjusted(mValsSw, rfit4)
-Madj2 <- missMethyl::getAdjusted(mValsSw, rfit6)
-Madj3 <- missMethyl::getAdjusted(mValsSw, rfit8)
+rfit_k2 <- RUVadj(Y=mValsSq, fit=rfit_k2)
+
+rfit_k8 <- RUVfit(Y=mValsSq, X=design_tw[,"ADOS"], ctl=ctl,
+  method = "ruv4", k=8) # Stage 2 analysis 
+
+rfit_k8 <- RUVadj(Y=mValsSq, fit=rfit_k8)
+
+#get adjusted values - doesn't work as at Apr 2022.
+#Madj1 <- missMethyl::getAdj(Y=mValsSq, fit=rfit_k1)
+#Madj2 <- missMethyl::getAdj(Y=mValsSq, fit=rfit_k2)
+#Madj3 <- missMethyl::getAdj(Y=mValsSq, fit=rfit_k8)
 
 #Visualise plots
-par(mfrow=c(2,2))
-plotMDS(mValsSw, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
-        main="Unadjusted")
+par(mfrow=c(1,1))
+plotMDS(mValsSq, labels=targets_gen$Sample_Name, 
+  col=as.integer(factor(targets_gen$Diagnosis)),
+  dim=c(14,15),
+  main="Unadjusted")
 #legend("topleft",legend=c("Cancer","Normal"),pch=16,cex=1,col=1:2)
 
-plotMDS(Madj, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
-        main="Adjusted: RUV-inverse")
+#plotMDS(Madj, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
+#        main="Adjusted: RUV-inverse")
 #legend("topleft",legend=c("Cancer","Normal"),pch=16,cex=1,col=1:2)
 
-plotMDS(Madj1, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
-        main="Adjusted: RUV-4, k=1")
+#plotMDS(Madj1, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
+#        main="Adjusted: RUV-4, k=1")
 #legend("bottomleft",legend=c("Cancer","Normal"),pch=16,cex=1,col=1:2)
 
-plotMDS(Madj2, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
-        main="Adjusted: RUV-4, k=2")
+#plotMDS(Madj2, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
+#        main="Adjusted: RUV-4, k=2")
 #legend("bottomright",legend=c("Cancer","Normal"),pch=16,cex=1,col=1:2)
 
-plotMDS(Madj3, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
-        main="Adjusted: RUV-4, k=8")
+#plotMDS(Madj3, labels=targets_gen$Sample_Name, col=as.integer(factor(targets_gen$Diagnosis..L.0..M.1..H.2.)),dim=c(14,15),
+#        main="Adjusted: RUV-4, k=8")
 #legend
-dev.off()
 
-## Gene ontology of top DMPs ##
-#Gene Ontology analysis (gometh): top 1000 probes
+```
+
+## Gene ontology of top DMPs
+
+Gene Ontology analysis (gometh): top 1000 probes
+
+```{r,gometh1}
+
 res <- read.csv("ASD_blood_topruv80%_dmps_onADOS_withintw_Nov29.csv", header = TRUE)
 sigCpGs_1k = res$Name[1:1000]
-#total number
-length(sigCpGs_1k)
+
 sigCpGs_1k = as.character(sigCpGs_1k)
 all = res$Name
 length(all)
-#gometh()
-par(mfrow=c(1,1))
-gometh_1k <- gometh(sig.cpg=sigCpGs_1k, all.cpg=all, plot.bias=TRUE)
+
+# kegg
 gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
-topKEGG(gometh_kegg)
-write.csv(gometh_1k, file = "GOterms_1k.csv", row.names = TRUE)
+head( gometh_kegg[order(gometh_kegg$P.DE),] , 20)
 write.csv(gometh_kegg, file = "GOmeth_kegg.csv", row.names = TRUE)
-#top GO terms
-topGO(gometh_1k, ontology = "BP", number = 20L)
-## Total number of significant GO categories at 5% FDR
-sum(gometh_1k$FDR<0.5) 
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+head( gometh_go[order(gometh_go$P.DE),] , 20)
+write.csv(gometh_go, file = "GOmeth_go.csv", row.names = TRUE)
+
+```
+
+```{r,gometh2}
 
 #Plotting effect sizes of top DMPs
-plot(ilogit2(mDat[rownames(mDat) == "cg11027325",]), ADOS, main = "HES6: cg11027325", ylab = "ADOS z-score", xlab = "Beta Value")
+plot(ilogit2(mDat[rownames(mDat) == "cg11027325",]), ADOS,
+  main = "HES6: cg11027325", ylab = "ADOS z-score", xlab = "Beta Value")
+
 regl5<-lm(ADOS ~ ilogit2(mDat[rownames(mDat) == "cg11027325",]))
 abline(regl5)
 cor.test(ADOS, ilogit2(mDat[rownames(mDat) == "cg11027325",]), method = "pearson")
 
-plot(ilogit2(mDat[rownames(mDat) == "cg20507028",]), ADOS, main = "ZNF713: cg20507028", ylab = "ADOS z-score", xlab = "Beta Value")
+plot(ilogit2(mDat[rownames(mDat) == "cg20507028",]), ADOS,
+  main = "ZNF713: cg20507028", ylab = "ADOS z-score", xlab = "Beta Value")
+
 regl5<-lm(ADOS ~ ilogit2(mDat[rownames(mDat) == "cg20507028",]))
 abline(regl5)
 cor.test(ADOS, ilogit2(mDat[rownames(mDat) == "cg20507028",]), method = "pearson")
 
-plot(ilogit2(mDat[rownames(mDat) == "cg21244116",]), ADOS, main = "EHMT1: cg21244116", ylab = "ADOS z-score", xlab = "Beta Value")
+plot(ilogit2(mDat[rownames(mDat) == "cg21244116",]), ADOS, 
+  main = "EHMT1: cg21244116", ylab = "ADOS z-score", xlab = "Beta Value")
+
 regl5<-lm(ADOS ~ ilogit2(mDat[rownames(mDat) == "cg21244116",]))
 abline(regl5)
 cor.test(ADOS, ilogit2(mDat[rownames(mDat) == "cg21244116",]), method = "pearson")
 
-plot(ilogit2(mDat[rownames(mDat) == "cg21241156",]), ADOS, main = "TLE4: cg21241156", ylab = "ADOS z-score", xlab = "Beta Value")
+plot(ilogit2(mDat[rownames(mDat) == "cg21241156",]), ADOS, 
+  main = "TLE4: cg21241156", ylab = "ADOS z-score", xlab = "Beta Value")
 regl5<-lm(ADOS ~ ilogit2(mDat[rownames(mDat) == "cg21241156",]))
 abline(regl5)
 cor.test(ADOS, ilogit2(mDat[rownames(mDat) == "cg21241156",]), method = "pearson")
@@ -479,11 +546,14 @@ diff_effectsize_6 = ilogit2(mDat[rownames(mDat) == "cg21241156"][11]) - ilogit2(
 diff_effectsize_7 = ilogit2(mDat[rownames(mDat) == "cg21241156"][13]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][14])
 diff_effectsize_8 = ilogit2(mDat[rownames(mDat) == "cg21241156"][15]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][16])
 diff_effectsize_9 = ilogit2(mDat[rownames(mDat) == "cg21241156"][17]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][18])
-diff_effectsize_tot = c(0.02383603, 0.01913442, -0.0003221395, 0.07068035, -0.05522228, 0.05076427, 0.002702124, -0.03403429, 0.06949949)
+diff_effectsize_tot = c(0.02383603, 0.01913442, -0.0003221395, 0.07068035, -0.05522228, 
+  0.05076427, 0.002702124, -0.03403429, 0.06949949)
 diff_effectsize_tot
 
 #TLE4: cg21241156
-plot(diff_effectsize_tot, diff_ADOS_score, main = "TLE4: cg21241156", ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
+plot(diff_effectsize_tot, diff_ADOS_score, main = "TLE4: cg21241156",
+  ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
+
 regl5<-lm(diff_ADOS_score ~ diff_effectsize_tot)
 abline(regl5)
 cor.test(diff_ADOS_score, diff_effectsize_tot, method = "pearson")
@@ -498,10 +568,12 @@ diff_effectsize_6 = ilogit2(mDat[rownames(mDat) == "cg21244116"][11]) - ilogit2(
 diff_effectsize_7 = ilogit2(mDat[rownames(mDat) == "cg21244116"][13]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][14])
 diff_effectsize_8 = ilogit2(mDat[rownames(mDat) == "cg21244116"][15]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][16])
 diff_effectsize_9 = ilogit2(mDat[rownames(mDat) == "cg21244116"][17]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][18])
-diff_effectsize_tot_cg21244116 = c(-0.0340176, -0.001041366, 0.02669383, -0.02422778, 0.03996136, -0.03206927, -0.004060284, 0.019002, -0.04277449)
+diff_effectsize_tot_cg21244116 = c(-0.0340176, -0.001041366, 0.02669383, -0.02422778, 0.03996136, 
+  -0.03206927, -0.004060284, 0.019002, -0.04277449)
 diff_effectsize_tot_cg21244116
 
-plot(diff_effectsize_tot_cg21244116, diff_ADOS_score, main = "EHMT1: cg21244116", ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
+plot(diff_effectsize_tot_cg21244116, diff_ADOS_score, main = "EHMT1: cg21244116", 
+  ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
 regl5<-lm(diff_ADOS_score ~ diff_effectsize_tot_cg21244116)
 abline(regl5)
 cor.test(diff_ADOS_score, diff_effectsize_tot_cg21244116, method = "pearson")
@@ -516,10 +588,12 @@ diff_effectsize_6 = ilogit2(mDat[rownames(mDat) == "cg20507028"][11]) - ilogit2(
 diff_effectsize_7 = ilogit2(mDat[rownames(mDat) == "cg20507028"][13]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][14])
 diff_effectsize_8 = ilogit2(mDat[rownames(mDat) == "cg20507028"][15]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][16])
 diff_effectsize_9 = ilogit2(mDat[rownames(mDat) == "cg20507028"][17]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][18])
-diff_effectsize_tot_cg20507028 = c(-0.005014283, -0.04933726, 0.0541018, -0.06395128, 0.07563989, -0.1120907, 0.004739958, 0.01840117, -0.06681291)
+diff_effectsize_tot_cg20507028 = c(-0.005014283, -0.04933726, 0.0541018, -0.06395128, 0.07563989, 
+  -0.1120907, 0.004739958, 0.01840117, -0.06681291)
 diff_effectsize_tot_cg20507028
 
-plot(diff_effectsize_tot_cg20507028, diff_ADOS_score, main = "ZNF713: cg20507028", ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
+plot(diff_effectsize_tot_cg20507028, diff_ADOS_score, main = "ZNF713: cg20507028", 
+  ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
 regl5<-lm(diff_ADOS_score ~ diff_effectsize_tot_cg20507028)
 abline(regl5)
 cor.test(diff_ADOS_score, diff_effectsize_tot_cg20507028, method = "pearson")
@@ -534,25 +608,39 @@ diff_effectsize_6 = ilogit2(mDat[rownames(mDat) == "cg11027325"][11]) - ilogit2(
 diff_effectsize_7 = ilogit2(mDat[rownames(mDat) == "cg11027325"][13]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][14])
 diff_effectsize_8 = ilogit2(mDat[rownames(mDat) == "cg11027325"][15]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][16])
 diff_effectsize_9 = ilogit2(mDat[rownames(mDat) == "cg11027325"][17]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][18])
-diff_effectsize_tot_cg11027325 = c(0.1334995, 0.02969043, -0.04247427, 0.1107637, -0.03854689, 0.1779549, 0.007191577, -0.03854834, 0.1683442)
+diff_effectsize_tot_cg11027325 = c(0.1334995, 0.02969043, -0.04247427, 0.1107637, -0.03854689, 
+  0.1779549, 0.007191577, -0.03854834, 0.1683442)
 diff_effectsize_tot_cg11027325
 
-plot(diff_effectsize_tot_cg11027325, diff_ADOS_score, main = "HES6: cg11027325", ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
+plot(diff_effectsize_tot_cg11027325, diff_ADOS_score, main = "HES6: cg11027325", 
+  ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
 regl5<-lm(diff_ADOS_score ~ diff_effectsize_tot_cg11027325)
 abline(regl5)
 cor.test(diff_ADOS_score, diff_effectsize_tot_cg11027325, method = "pearson")
 
-#DMRCate - differentially methylated region analysis
-source("http://bioconductor.org/biocLite.R")
-biocLite("DMRcate")
-library("DMRcate")
+```
+
+## DMRCate - differentially methylated region analysis
+
+```{r,dmrcate1}
+
 #design matrix in regression 
 design_tw <- model.matrix(~ADOS+Twin_Group)
 design_tw_dmrc <- model.matrix(~ADOS)
 #myannotation <- cpg.annotate("array", mDat, analysis.type="differential", design=design_tw, coef=2, fdr=1)
-myannotation <- cpg.annotate("array", mDat, what = "M", arraytype = "EPIC", analysis.type="differential", design_tw, coef=2)
+myannotation <- cpg.annotate("array", mDat, what = "M", 
+  arraytype = "EPIC", analysis.type="differential", design_tw, coef=2)
 dmrcoutput <- dmrcate(myannotation, lambda=1000, C=2, pcutoff=0.001)
-results.ranges <- extractRanges(dmrcoutput, genome = "hg19") 
-head(dmrcoutput$results)
-length(dmrcoutput$results)
-write.csv(dmrcoutput$results, file = "dmrcoutput.csv", row.names = TRUE)
+results.ranges <- data.frame(extractRanges(dmrcoutput, genome = "hg19") )
+head(results.ranges, 20)
+write.csv(results.ranges, file = "dmrcoutput.csv", row.names = TRUE)
+
+```
+
+## Session information
+
+```{r,sessioninfo}
+
+sessionInfo()
+
+```
