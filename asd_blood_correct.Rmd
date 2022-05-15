@@ -70,19 +70,13 @@ plot(hr)
 
 ```
 
-# Build new target removing controls
-#removepair1 = !targets$Twin_Group %in% c("Q020","Q026", "Q034", "Q038", "Q043", "Q044")
-#removepairtest = !targets$Sample_Group %in% "0"
-#targets = targets[removepairtest,]
-#rgSet = read.metharray.exp(targets = targets)
-#sampleNames(rgSet) = targets$ID
-
 ## Quality control
 
 ```{r,qc1}
 
 detP = detectionP(rgSet)
-qcReport(rgSet, sampNames = targets_gen$Sample_Name, pdf="qc-report_ASD_blood_nov27.pdf")
+qcReport(rgSet, sampNames = targets_gen$Sample_Name,
+  pdf="qc-report_ASD_blood_nov27.pdf")
 cols=brewer.pal(4,"Set1")
 
 barplot(apply(detP,2,mean),
@@ -128,26 +122,15 @@ SQN is used as it gave a more stable result.
 
 ```{r,norm1}
 
-mSetSw = preprocessSWAN(rgSet)
-
-densityPlot(getBeta(mSetSw),main="SWAN")
-
 #SQN method
 mSetSq = preprocessQuantile(rgSet)
-
 
 densityPlot(rgSet, sampGroups = targets_gen$Social_interaction_on_ADOS,
   main="Raw", legend = FALSE)
 
-densityPlot(getBeta(mSetSw), 
-  sampGroups = targets_gen$Social_interaction_on_ADOS,main="SWAN", 
-  legend = FALSE)
-
 densityPlot(getBeta(mSetSq), 
   sampGroups = targets_gen$Social_interaction_on_ADOS,main="SQN", 
   legend = FALSE)
-
-par(mfrow=c(1,1))
 
 ```
 
@@ -189,6 +172,11 @@ wx <- lapply(1:ncol(cellCounts_new) , function(i) {
 names(wx) <- colnames(cellCounts_new)
 wx
 
+```
+
+Try estimatecellcounts2.
+
+```{r,celltypes2}
 
 cells <- estimateCellCounts2(rgSet, referencePlatform= "IlluminaHumanMethylationEPIC", 
   returnAll = TRUE)
@@ -342,244 +330,6 @@ output_1000 <- merge(ann_sub,top1000,by.x="Name",by.y="row.names")
 
 write.csv(output_1000[order(output_1000$P.Value),],
   file="ASD_blood_top_dmps_onADOS_Nov27_withintw_limma_top1k.csv",row.names=FALSE)
-
-```
-
-## Gene methylation enrichment
-
-Spent a lot of effort to fix up the non-unique gene names in the dataset.
-
-```{r,gme1}
-
-output <- read.csv("ASD_blood_top_dmps_onADOS_withintw_Nov27_limma.csv")
-out <- output[,c("UCSC_RefGene_Name","t")]
-
-# histogram of t values
-hist(out$t)
-
-CORES= detectCores()
-
-gname_col <- unname( unlist( mclapply( 1:nrow(out) , function(i) {
-  gnames <- out[i,1]
-  gnames <- unique(unlist(strsplit(gnames,";")))
-  sapply( gnames , function(gname) { 
-    gname
-  } )
-} , mc.cores=CORES ) ) )
-
-dat_col <- unname( unlist( mclapply( 1:nrow(out) , function(i) {
-  gnames <- out[i,1]
-  gnames <- unique(unlist(strsplit(gnames,";")))
-  sapply( gnames , function(gname) {   
-   out[i,2]
-  } )
-} , mc.cores=CORES ) ) )
-
-df <- data.frame(gname_col,dat_col)
-gn <- unique(df$gname_col)
-
-gme_res <- mclapply( 1:length(gn), function(i) {
-  g <- gn[i]
-  tstats <- df[which(df$gname_col == g),"dat_col"]
-  tstats <- tstats[order(tstats)]
-  myn <- length(tstats)
-  mymean <- mean(tstats)
-  mymedian <- median(tstats)
-  #plot(tstats,main=g)
-  #abline(h=mymean,col="red")
-  #abline(h=mymedian,col="blue")
-  wt <- wilcox.test(tstats)
-  res <- c(g,myn,mymean,mymedian,wt$p.value)
-} , mc.cores=CORES)
-
-
-gme_res_df <- do.call(rbind, gme_res)
-rownames(gme_res_df) <- gme_res_df[,1]
-gme_res_df <- gme_res_df[,-1]
-colnames(gme_res_df) <- c("n_probes","t_mean","t_median","p.value")
-tmp <- apply(gme_res_df,2,as.numeric)
-rownames(tmp) <- rownames(gme_res_df)
-gme_res_df <- tmp
-gme_res_df <- as.data.frame(gme_res_df)
-gme_res_df <- gme_res_df[order(gme_res_df$p.value),]
-gme_res_df$logp <- -log10(gme_res_df$p.value )
-gme_res_df$fdr <- p.adjust(gme_res_df$p.value,method="fdr")
-
-head(gme_res_df,20) %>% 
-  kbl(caption = "Top significant genes") %>% 
-  kable_paper("hover", full_width = F)
-
-sig <- subset(gme_res_df,logp>5)
-nsig <- nrow(sig)
-
-# volcano
-plot(gme_res_df$t_median , gme_res_df$logp ,
-  xlab="effect size (mean t-stat)", ylab="-log10(p-value)",
-  pch=19, cex=0.5, col="gray")
-
-points(sig$t_median , sig$logp ,
-  pch=19, cex=0.5, col="red")
-
-abline(h=5,lty=2)
-
-par(mfrow=c(1,2))
-
-n=50
-sig2 <- head(gme_res_df,n)
-sig2 <- sig2[order(-sig2$t_median),]
-gs <- rownames(sig2)[1:n]
-tstats <- lapply(1:n, function(i) {
-  g <- rownames(sig2)[i]
-  df[which(df$gname_col==g),"dat_col"]
-} )
-names(tstats) <- gs
-
-# boxplot
-boxplot(tstats,horizontal=TRUE,las=1,
-  main="most significant genes",cex.axis=0.6,
-  xlab="t-statistic")
-
-n=50
-sig2 <- tail(sig[order(abs(sig$t_median)),],n)
-gs <- rownames(sig2)[1:n]
-tstats <- lapply(1:n, function(i) {
-  g <- rownames(sig2)[i]
-  df[which(df$gname_col==g),"dat_col"]
-} )
-names(tstats) <- gs
-
-# boxplot
-boxplot(tstats,horizontal=TRUE,las=1,
-  main="largest effect size",cex.axis=0.6, 
-  xlab="t-statistic")
-
-par(mfrow=c(1,1))
-
-```
-
-## Mitch
-
-Mitch to identify gene set enrichments.
-
-```{r,mitch1}
-
-m1 <- gme_res_df[,"t_median",drop=FALSE]
-
-#download.file("https://reactome.org/download/current/ReactomePathways.gmt.zip",
-#  destfile="ReactomePathways.gmt.zip")
-#unzip("ReactomePathways.gmt.zip")
-genesets <- gmt_import("ReactomePathways.gmt")
-
-mres1 <- mitch_calc(m1, genesets, priority="effect")
-
-head(mres1$enrichment_result,50) %>%
-  kbl(caption = "Top significant reactome gene sets") %>% 
-  kable_paper("hover", full_width = F)
-
-sig <- subset(mres1$enrichment_result,p.adjustANOVA<0.01)
-
-sig2a <- head(subset(sig,s.dist>0),15)
-sig2b <- head(subset(sig,s.dist<0),15)
-sig2 <- rbind(sig2a,sig2b)
-
-
-sig2 <- sig2[order(sig2$s.dist),]
-sig2_s <-  sig2$s.dist
-names(sig2_s) <- sig2$set
-
-par(mar=c(5,25,3,1))
-barplot(sig2_s,horiz=TRUE,las=1,col="darkgray",xlab="Enrichment score",
- cex.names=0.8,xlim=c(-1,1))
-dev.off()
-
-```
-
-## Wilcox gene set test
-
-As the data are heavily skewed, mitch may be biased.
-
-```{r,wt}
-
-gse_res <- mclapply( 1:length(genesets), function(i) {
-  gs <- genesets[i]
-  name <- names(gs)
-  n_members <- length(which(rownames(m1) %in% gs[[1]]))
-  if ( n_members > 4 ) {
-    tstats <- m1[which(rownames(m1) %in% gs[[1]]),]
-    myn <- length(tstats)
-    mymean <- mean(tstats)
-    mymedian <- median(tstats)
-    wt <- wilcox.test(tstats)
-    res <- c(name,myn,mymean,mymedian,wt$p.value)
-  }
-} , mc.cores = CORES)
-
-gse_res_df <- do.call(rbind, gse_res)
-rownames(gse_res_df) <- gse_res_df[,1]
-gse_res_df <- gse_res_df[,-1]
-colnames(gse_res_df) <- c("n_genes","t_mean","t_median","p.value")
-tmp <- apply(gse_res_df,2,as.numeric)
-rownames(tmp) <- rownames(gse_res_df)
-gse_res_df <- tmp
-gse_res_df <- as.data.frame(gse_res_df)
-gse_res_df <- gse_res_df[order(gse_res_df$p.value),]
-gse_res_df$logp <- -log10(gse_res_df$p.value )
-gse_res_df$fdr <- p.adjust(gse_res_df$p.value,method="fdr")
-
-head(gse_res_df,30) %>%
-  kbl(caption = "Top significant genesets") %>%
-  kable_paper("hover", full_width = F)
-
-sig <- subset(gse_res_df,logp>5)
-nsig <- nrow(sig)
-
-# volcano
-plot(gse_res_df$t_median , gse_res_df$logp ,
-  xlab="effect size (mean t-stat)", ylab="-log10(p-value)",
-  pch=19, cex=0.5, col="gray")
-
-points(sig$t_median , sig$logp ,
-  pch=19, cex=0.5, col="red")
-
-abline(h=5,lty=2)
-
-# boxplot most significant
-n=50
-sig2 <- head(gse_res_df,n)
-sig2 <- sig2[order(-sig2$t_median),]
-gs <- rownames(sig2)[1:n]
-tstats <- lapply(1:n, function(i) {
-  g <- rownames(sig2)[i]
-  genes <- genesets[[which(names(genesets) == g)]]
-  m1[which(rownames(m1) %in% genes),"t_median"]
-} )
-names(tstats) <- gs
-
-# boxplot
-par(mar=c(5,20,3,1))
-boxplot(tstats,horizontal=TRUE,las=1,
-  main="most significant gene sets",cex.axis=0.6,
-  xlab="mean t-statistic")
-grid()
-
-# boxplot biggest effect size
-n=50
-sig2 <- tail(sig[order(abs(sig$t_median)),],n)
-gs <- rownames(sig2)[1:n]
-tstats <- lapply(1:n, function(i) {
-  g <- rownames(sig2)[i]
-  genes <- genesets[[which(names(genesets) == g)]]
-  m1[which(rownames(m1) %in% genes),"t_median"]
-} )
-names(tstats) <- gs
-
-# boxplot
-boxplot(tstats,horizontal=TRUE,las=1,
-  main="largest effect size",cex.axis=0.6,
-  xlab="mean t-statistic")
-grid()
-
-par(mfrow=c(1,1))
 
 ```
 
