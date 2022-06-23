@@ -494,139 +494,43 @@ write.csv(gometh_go, file = "GOmeth_go.csv", row.names = TRUE)
 
 ```
 
-```{r,gometh2}
+## Plotting effect sizes of top DMPs
 
-#Plotting effect sizes of top DMPs
-plot(ilogit2(mDat[rownames(mDat) == "cg11027325",]), ADOS,
-  main = "HES6: cg11027325", ylab = "ADOS z-score", xlab = "Beta Value")
+```{r,effect1}
 
-regl5<-lm(ADOS ~ ilogit2(mDat[rownames(mDat) == "cg11027325",]))
-abline(regl5)
-cor.test(ADOS, ilogit2(mDat[rownames(mDat) == "cg11027325",]), method = "pearson")
+TOPPROBES <- head(res$Name,6)
 
-plot(ilogit2(mDat[rownames(mDat) == "cg20507028",]), ADOS,
-  main = "ZNF713: cg20507028", ylab = "ADOS z-score", xlab = "Beta Value")
+effect_plot <- function(PROBE) {
+  GENE <- res[which(res$Name==PROBE),"UCSC_RefGene_Name"]
+  GENE <- paste0(unique(unlist(strsplit(GENE,";"))),collapse=";")
+  HEADER=paste(GENE,":",PROBE)
+  BETAS <- ilogit2(mDat[rownames(mDat) == PROBE,])
+  plot(BETAS, ADOS, main = HEADER, ylab = "ADOS z-score", xlab = "Beta Value")
+  regl5 <- lm(ADOS ~ BETAS)
+  abline(regl5)
+  mycor <- cor.test(ADOS, BETAS, method = "pearson")
+  mycor_stat <- signif(mycor$estimate,3)
+  mycor_p <- signif(mycor$p.value,3)
+  SUBHEAD <- paste("R=",mycor_stat," p=",mycor_p,sep="")
+  mtext(SUBHEAD)
 
-regl5<-lm(ADOS ~ ilogit2(mDat[rownames(mDat) == "cg20507028",]))
-abline(regl5)
-cor.test(ADOS, ilogit2(mDat[rownames(mDat) == "cg20507028",]), method = "pearson")
+  mybetas <- ilogit2(mDat[rownames(mDat) == PROBE])
+  mybetas <- matrix(mybetas,ncol=2)
+  mydeltabetas <- mybetas[,1]-mybetas[,2]
+  myADOS <- matrix(ADOS,ncol=2)
+  mydeltaADOS <- myADOS[,1] - myADOS[,2]
+  regl5 <- lm(mydeltaADOS ~ mydeltabetas)
+  plot(mydeltabetas,mydeltaADOS, ylab = "Delta ADOS z-score", xlab = "Delta beta Value",main=HEADER)
+  abline(regl5)
+  mycor <- cor.test(mydeltaADOS, mydeltabetas, method = "pearson")
+  mycor_stat <- signif(mycor$estimate,3)
+  mycor_p <- signif(mycor$p.value,3)
+  SUBHEAD <- paste("R=",mycor_stat," p=",mycor_p,sep="")
+  mtext(SUBHEAD)
+}
+#effect_plot(TOPPROBES[1])
 
-plot(ilogit2(mDat[rownames(mDat) == "cg21244116",]), ADOS, 
-  main = "EHMT1: cg21244116", ylab = "ADOS z-score", xlab = "Beta Value")
-
-regl5<-lm(ADOS ~ ilogit2(mDat[rownames(mDat) == "cg21244116",]))
-abline(regl5)
-cor.test(ADOS, ilogit2(mDat[rownames(mDat) == "cg21244116",]), method = "pearson")
-
-plot(ilogit2(mDat[rownames(mDat) == "cg21241156",]), ADOS, 
-  main = "TLE4: cg21241156", ylab = "ADOS z-score", xlab = "Beta Value")
-regl5<-lm(ADOS ~ ilogit2(mDat[rownames(mDat) == "cg21241156",]))
-abline(regl5)
-cor.test(ADOS, ilogit2(mDat[rownames(mDat) == "cg21241156",]), method = "pearson")
-
-#Effect sizes of differences in ADOS score versus difference in beta value wthin twin pairs
-
-diff_ADOS_1 = abs(ADOS[1] - ADOS[2])
-diff_ADOS_2 = abs(ADOS[3] - ADOS[4])
-diff_ADOS_3 = abs(ADOS[5] - ADOS[6])
-diff_ADOS_4 = abs(ADOS[7] - ADOS[8])
-diff_ADOS_5 = abs(ADOS[9] - ADOS[10])
-diff_ADOS_6 = abs(ADOS[11] - ADOS[12])
-diff_ADOS_7 = abs(ADOS[13] - ADOS[14])
-diff_ADOS_8 = abs(ADOS[15] - ADOS[16])
-diff_ADOS_9 = abs(ADOS[17] - ADOS[18])
-diff_ADOS_score = c(9,4,3,7,5,8,2,5,12)
-
-#diff_ADOS_score = c(diff_ADOS_1+diff_ADOS_2+diff_ADOS_3+diff_ADOS_4+diff_ADOS_5+diff_ADOS_6+diff_ADOS_7+diff_ADOS_8+diff_ADOS_9)
-
-#for (i in 1:length(ADOS))
-#{
-#  diff_ADOS_score<-abs(ADOS[i] - ADOS[i+1])
-#    i = i +1
-#diff_ADOS_score <- c(diff_ADOS_score, diff_ADOS_score[i])
-#}
-#print(diff_ADOS_score)
-
-diff_effectsize_1 = ilogit2(mDat[rownames(mDat) == "cg21241156"][1]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][2])
-diff_effectsize_2 = ilogit2(mDat[rownames(mDat) == "cg21241156"][3]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][4])
-diff_effectsize_3 = ilogit2(mDat[rownames(mDat) == "cg21241156"][5]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][6])
-diff_effectsize_4 = ilogit2(mDat[rownames(mDat) == "cg21241156"][7]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][8])
-diff_effectsize_5 = ilogit2(mDat[rownames(mDat) == "cg21241156"][9]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][10])
-diff_effectsize_6 = ilogit2(mDat[rownames(mDat) == "cg21241156"][11]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][12])
-diff_effectsize_7 = ilogit2(mDat[rownames(mDat) == "cg21241156"][13]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][14])
-diff_effectsize_8 = ilogit2(mDat[rownames(mDat) == "cg21241156"][15]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][16])
-diff_effectsize_9 = ilogit2(mDat[rownames(mDat) == "cg21241156"][17]) - ilogit2(mDat[rownames(mDat) == "cg21241156"][18])
-diff_effectsize_tot = c(0.02383603, 0.01913442, -0.0003221395, 0.07068035, -0.05522228, 
-  0.05076427, 0.002702124, -0.03403429, 0.06949949)
-diff_effectsize_tot
-
-#TLE4: cg21241156
-plot(diff_effectsize_tot, diff_ADOS_score, main = "TLE4: cg21241156",
-  ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
-
-regl5<-lm(diff_ADOS_score ~ diff_effectsize_tot)
-abline(regl5)
-cor.test(diff_ADOS_score, diff_effectsize_tot, method = "pearson")
-
-#EHMT1: cg21244116
-diff_effectsize_1 = ilogit2(mDat[rownames(mDat) == "cg21244116"][1]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][2])
-diff_effectsize_2 = ilogit2(mDat[rownames(mDat) == "cg21244116"][3]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][4])
-diff_effectsize_3 = ilogit2(mDat[rownames(mDat) == "cg21244116"][5]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][6])
-diff_effectsize_4 = ilogit2(mDat[rownames(mDat) == "cg21244116"][7]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][8])
-diff_effectsize_5 = ilogit2(mDat[rownames(mDat) == "cg21244116"][9]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][10])
-diff_effectsize_6 = ilogit2(mDat[rownames(mDat) == "cg21244116"][11]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][12])
-diff_effectsize_7 = ilogit2(mDat[rownames(mDat) == "cg21244116"][13]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][14])
-diff_effectsize_8 = ilogit2(mDat[rownames(mDat) == "cg21244116"][15]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][16])
-diff_effectsize_9 = ilogit2(mDat[rownames(mDat) == "cg21244116"][17]) - ilogit2(mDat[rownames(mDat) == "cg21244116"][18])
-diff_effectsize_tot_cg21244116 = c(-0.0340176, -0.001041366, 0.02669383, -0.02422778, 0.03996136, 
-  -0.03206927, -0.004060284, 0.019002, -0.04277449)
-diff_effectsize_tot_cg21244116
-
-plot(diff_effectsize_tot_cg21244116, diff_ADOS_score, main = "EHMT1: cg21244116", 
-  ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
-regl5<-lm(diff_ADOS_score ~ diff_effectsize_tot_cg21244116)
-abline(regl5)
-cor.test(diff_ADOS_score, diff_effectsize_tot_cg21244116, method = "pearson")
-
-#ZNF713: cg20507028
-diff_effectsize_1 = ilogit2(mDat[rownames(mDat) == "cg20507028"][1]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][2])
-diff_effectsize_2 = ilogit2(mDat[rownames(mDat) == "cg20507028"][3]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][4])
-diff_effectsize_3 = ilogit2(mDat[rownames(mDat) == "cg20507028"][5]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][6])
-diff_effectsize_4 = ilogit2(mDat[rownames(mDat) == "cg20507028"][7]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][8])
-diff_effectsize_5 = ilogit2(mDat[rownames(mDat) == "cg20507028"][9]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][10])
-diff_effectsize_6 = ilogit2(mDat[rownames(mDat) == "cg20507028"][11]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][12])
-diff_effectsize_7 = ilogit2(mDat[rownames(mDat) == "cg20507028"][13]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][14])
-diff_effectsize_8 = ilogit2(mDat[rownames(mDat) == "cg20507028"][15]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][16])
-diff_effectsize_9 = ilogit2(mDat[rownames(mDat) == "cg20507028"][17]) - ilogit2(mDat[rownames(mDat) == "cg20507028"][18])
-diff_effectsize_tot_cg20507028 = c(-0.005014283, -0.04933726, 0.0541018, -0.06395128, 0.07563989, 
-  -0.1120907, 0.004739958, 0.01840117, -0.06681291)
-diff_effectsize_tot_cg20507028
-
-plot(diff_effectsize_tot_cg20507028, diff_ADOS_score, main = "ZNF713: cg20507028", 
-  ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
-regl5<-lm(diff_ADOS_score ~ diff_effectsize_tot_cg20507028)
-abline(regl5)
-cor.test(diff_ADOS_score, diff_effectsize_tot_cg20507028, method = "pearson")
-
-#HES6: cg11027325
-diff_effectsize_1 = ilogit2(mDat[rownames(mDat) == "cg11027325"][1]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][2])
-diff_effectsize_2 = ilogit2(mDat[rownames(mDat) == "cg11027325"][3]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][4])
-diff_effectsize_3 = ilogit2(mDat[rownames(mDat) == "cg11027325"][5]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][6])
-diff_effectsize_4 = ilogit2(mDat[rownames(mDat) == "cg11027325"][7]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][8])
-diff_effectsize_5 = ilogit2(mDat[rownames(mDat) == "cg11027325"][9]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][10])
-diff_effectsize_6 = ilogit2(mDat[rownames(mDat) == "cg11027325"][11]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][12])
-diff_effectsize_7 = ilogit2(mDat[rownames(mDat) == "cg11027325"][13]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][14])
-diff_effectsize_8 = ilogit2(mDat[rownames(mDat) == "cg11027325"][15]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][16])
-diff_effectsize_9 = ilogit2(mDat[rownames(mDat) == "cg11027325"][17]) - ilogit2(mDat[rownames(mDat) == "cg11027325"][18])
-diff_effectsize_tot_cg11027325 = c(0.1334995, 0.02969043, -0.04247427, 0.1107637, -0.03854689, 
-  0.1779549, 0.007191577, -0.03854834, 0.1683442)
-diff_effectsize_tot_cg11027325
-
-plot(diff_effectsize_tot_cg11027325, diff_ADOS_score, main = "HES6: cg11027325", 
-  ylab = "ADOS difference z-score", xlab = "Delta Beta Value")
-regl5<-lm(diff_ADOS_score ~ diff_effectsize_tot_cg11027325)
-abline(regl5)
-cor.test(diff_ADOS_score, diff_effectsize_tot_cg11027325, method = "pearson")
+sapply(TOPPROBES,effect_plot)
 
 ```
 
