@@ -177,6 +177,7 @@ gmea_boxplot(res=res_bl,df=res_bldf,n=50)
 ```{r,gu}
 
 res_gu <- calc_sc(gu)
+res_gudf <- res_gu$df
 res_gu <- res_gu$gme_res_df
 
 head(res_gu,30) %>%
@@ -205,7 +206,7 @@ points(sig_gu$median,sig_gu$sig,cex=0.6,pch=19,col="red")
 res <- res_gu
 df <- res_gudf
 
-gmea_boxplot(res=res_gu,df=res_blgu,n=50)
+gmea_boxplot(res=res_gu,df=res_gudf,n=50)
 
 ```
 
@@ -268,11 +269,13 @@ cor.test(j$bl,j$gu,method="spearman")
 
 ## Now to run mitch to have a look at the pathways involved
 
+Reactome pathways downloaded 26th September 2022.
+
 ```{r,mitch}
 
-download.file("https://reactome.org/download/current/ReactomePathways.gmt.zip",
-  destfile="ReactomePathways.gmt.zip")
-unzip("ReactomePathways.gmt.zip")
+#download.file("https://reactome.org/download/current/ReactomePathways.gmt.zip",
+#  destfile="ReactomePathways.gmt.zip")
+#unzip("ReactomePathways.gmt.zip")
 genesets <- gmt_import("ReactomePathways.gmt")
 
 res <- mitch_calc(j, genesets, priority="effect")
