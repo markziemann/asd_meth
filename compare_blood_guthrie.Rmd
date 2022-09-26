@@ -96,8 +96,41 @@ calc_sc <- function(dm,cores=8) {
   gme_res_df <- gme_res_df[order(-gme_res_df$sig),]
   gme_res_df$`fdr(sc)` <- p.adjust(gme_res_df$`p-value(sc)`)
   out <- list("df"=df,"gme_res_df"=gme_res_df)
-  return(out)
 }
+
+gmea_boxplot <- function(res,df,n=50) {
+  # smallest pval
+  par(mfrow=c(1,2))
+  gs <- head(rownames(res),n)
+  tstats <- lapply(gs, function(g) {
+    df[which(df$genes==g),"tvals"]
+  })
+  names(tstats) <- gs
+  tstats <- tstats[order(unlist(lapply(tstats,median)))]
+  boxplot(tstats,horizontal=TRUE,las=1,
+    main="smallest p-val(selfcont)",cex.axis=0.6,
+    xlab="t-statistic")
+  grid()
+  # biggest effect size (median)
+  sig <- subset(res,`fdr(sc)` < 0.05)
+  gs <- head(rownames(sig[order(-abs(sig$median)),]),n)
+  if ( length(gs) >2 ) {
+    tstats <- lapply(gs, function(g) {
+      df[which(df$genes==g),"tvals"]
+    })
+    names(tstats) <- gs
+    tstats <- tstats[order(unlist(lapply(tstats,median)))]
+    boxplot(tstats,horizontal=TRUE,las=1,
+      main="biggest effect size(median)",cex.axis=0.6,
+      xlab="t-statistic")
+    grid()
+  } else {
+    plot(1)
+    mtext("too few significant genes found")
+  }
+    par(mfrow=c(1,1))
+}
+
 
 ```
 
@@ -106,6 +139,7 @@ calc_sc <- function(dm,cores=8) {
 ```{r,bl}
 
 res_bl <- calc_sc(bl)
+res_bldf <- res_bl$df
 res_bl <- res_bl$gme_res_df
 
 head(res_bl,30) %>%
@@ -130,6 +164,11 @@ mtext(HEADER,cex=0.9)
 grid()
 
 points(sig_bl$median,sig_bl$sig,cex=0.6,pch=19,col="red")
+
+res <- res_bl
+df <- res_bldf
+
+gmea_boxplot(res=res_bl,df=res_bldf,n=50)
 
 ```
 
@@ -162,6 +201,11 @@ mtext(HEADER,cex=0.9)
 grid()
 
 points(sig_gu$median,sig_gu$sig,cex=0.6,pch=19,col="red")
+
+res <- res_gu
+df <- res_gudf
+
+gmea_boxplot(res=res_gu,df=res_blgu,n=50)
 
 ```
 
