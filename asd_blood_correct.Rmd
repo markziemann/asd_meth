@@ -388,11 +388,11 @@ output_ruv_1000 = merge(ann,top_ruv_1000,by.x="Name",by.y="row.names")
 #output_full_epicanno = merge(ann_epic,top,by.x="Name",by.y="row.names")
 
 write.csv(output_ruv[order(output_ruv$F.p),],
-  file="ASD_blood_topruv80%_dmps_onADOS_withintw_Nov29.csv",
+  file="ASD_blood_topruv80pc_dmps_onADOS_withintw_Nov29.csv",
   row.names=FALSE)
 
 write.csv(output_ruv_1000[order(output_ruv_1000$F.p),],
-  file="ASD_blood_topruv80%_1kdmps_onADOS_withintw_Nov29.csv",
+  file="ASD_blood_topruv80pc_1kdmps_onADOS_withintw_Nov29.csv",
   row.names=FALSE)
 
 output_ruv <- data.frame(output_ruv[order(output_ruv$F.p),])
@@ -475,7 +475,7 @@ Gene Ontology analysis (gometh): top 1000 probes
 
 ```{r,gometh1}
 
-res <- read.csv("ASD_blood_topruv80%_dmps_onADOS_withintw_Nov29.csv", header = TRUE)
+res <- read.csv("ASD_blood_topruv80pc_dmps_onADOS_withintw_Nov29.csv", header = TRUE)
 sigCpGs_1k = res$Name[1:1000]
 
 sigCpGs_1k = as.character(sigCpGs_1k)

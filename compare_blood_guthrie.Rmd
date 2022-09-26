@@ -1,0 +1,263 @@
+---
+title: "Autism Spectrum Disorder Methylation analysis - comparison of Guthrie card and fresh blood"
+author: "Mark Ziemann"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    fig_width: 7
+    fig_height: 7
+theme: cosmo
+---
+
+Source: https://github.com/markziemann/asd_meth
+
+## Introduction
+
+Here I will be running a comparison of differential methylation data from guthrie and fresh blood samples.
+
+Here are the files that I'm using:
+
+* ASD_blood_top_dmps_onADOS_withintw_Nov27_limma.csv
+
+* ASD_guthrie_top_dmps_onADOS_withintw_Nov27_limma.csv
+
+
+```{r,libs}
+
+library("parallel")
+library("mitch")
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+source("https://raw.githubusercontent.com/markziemann/gmea/main/meth_functions.R")
+library("data.table")
+library("kableExtra")
+library("eulerr")
+
+```
+
+
+## Load data
+
+```{r,load1}
+
+bl <- read.csv("ASD_blood_top_dmps_onADOS_withintw_Nov27_limma.csv")
+#rownames(bl) <- bl$Name
+#bl$Name=NULL
+
+gu <- read.csv("ASD_guthrie_top_dmps_onADOS_withintw_Nov27_limma.csv")
+#rownames(gu) <- gu$Name
+#gu$Name=NULL
+
+```
+
+## GMEA
+
+This is an enrichment technique.
+
+```{r,func}
+
+calc_sc <- function(dm,cores=8) {
+  #dm <- bl
+  dm <- dm[,c("Name","UCSC_RefGene_Name","t")]
+  gn <- unique(unlist(strsplit( dm$UCSC_RefGene_Name ,";")))
+  gnl <- strsplit( dm$UCSC_RefGene_Name ,";")
+  gnl <- mclapply(gnl,unique,mc.cores=cores)
+  dm$UCSC_RefGene_Name <- gnl
+  dm <- dm[lapply(dm$UCSC_RefGene_Name,length)>0,]
+
+  l <- mclapply(1:nrow(dm), function(i) {
+    a <- dm[i,]
+    len <- length(a[[1]][[1]])
+    tvals <- as.numeric(rep(a["t"],len))
+    genes <- a[[2]]
+    names(genes) <- "genes"
+    data.frame("genes"=genes,"tvals"=tvals)
+  },mc.cores=cores)
+  df <- do.call(rbind,l)
+  gme_res <- mclapply( 1:length(gn), function(i) {
+    g <- gn[i]
+    tstats <- df[which(df$genes==g),"tvals"]
+    myn <- length(tstats)
+    mymean <- mean(tstats)
+    mymedian <- median(tstats)
+    wtselfcont <- wilcox.test(tstats)
+    res <- c("gene"=g,"nprobes"=myn,"mean"=mymean,"median"=mymedian,
+      "p-value(sc)"=wtselfcont$p.value)
+  } , mc.cores=cores )
+  gme_res_df <- do.call(rbind, gme_res)
+  rownames(gme_res_df) <- gme_res_df[,1]
+  gme_res_df <- gme_res_df[,-1]
+  tmp <- apply(gme_res_df,2,as.numeric)
+  rownames(tmp) <- rownames(gme_res_df)
+  gme_res_df <- as.data.frame(tmp)
+  gme_res_df$sig <- -log10(gme_res_df[,4])
+  gme_res_df <- gme_res_df[order(-gme_res_df$sig),]
+  gme_res_df$`fdr(sc)` <- p.adjust(gme_res_df$`p-value(sc)`)
+  out <- list("df"=df,"gme_res_df"=gme_res_df)
+  return(out)
+}
+
+```
+
+## GMEA for blood
+
+```{r,bl}
+
+res_bl <- calc_sc(bl)
+res_bl <- res_bl$gme_res_df
+
+head(res_bl,30) %>%
+  kbl(caption="Top DM genes in blood identified with GMEA") %>%
+  kable_paper("hover", full_width = F)
+
+sig_bl <- subset(res_bl,`p-value(sc)` < 0.05)
+
+DETECTED <- nrow(res_bl)
+SIGNIF <- nrow(sig_bl)
+UP <- nrow(subset(sig_bl,median>0))
+DN <- nrow(subset(sig_bl,median<0))
+
+HEADER = paste(DETECTED,"genes detected,",SIGNIF,"significant,",
+  UP,"hypermethylated,",DN,"hypomethylated")
+
+plot(res_bl$median,res_bl$sig,cex=0.6,pch=19,
+  col="darkgray",xlab="log2 fold change",ylab="-log10(p)",
+  main="GMEA for ASD from blood")
+
+mtext(HEADER,cex=0.9)
+grid()
+
+points(sig_bl$median,sig_bl$sig,cex=0.6,pch=19,col="red")
+
+```
+
+## GMEA for Guthrie card
+
+```{r,gu}
+
+res_gu <- calc_sc(gu)
+res_gu <- res_gu$gme_res_df
+
+head(res_gu,30) %>%
+  kbl(caption="Top DM genes in Guthrie cards identified with GMEA") %>%
+  kable_paper("hover", full_width = F)
+
+sig_gu <- subset(res_gu,`p-value(sc)` < 0.05)
+
+DETECTED <- nrow(res_gu)
+SIGNIF <- nrow(sig_gu)
+UP <- nrow(subset(sig_gu,median>0))
+DN <- nrow(subset(sig_gu,median<0))
+
+HEADER = paste(DETECTED,"genes detected,",SIGNIF,"significant,",
+  UP,"hypermethylated,",DN,"hypomethylated")
+
+plot(res_gu$median,res_gu$sig,cex=0.6,pch=19,
+  col="darkgray",xlab="log2 fold change",ylab="-log10(p)",
+  main="GMEA for ASD from Guthrie cards")
+
+mtext(HEADER,cex=0.9)
+grid()
+
+points(sig_gu$median,sig_gu$sig,cex=0.6,pch=19,col="red")
+
+```
+
+## Compare blood and guthrie profiles
+
+```{r,compare1}
+
+bl <- sign(res_bl$median) * res_bl$sig
+names(bl) <- rownames(res_bl)
+bl <- data.frame(bl)
+
+gu <- sign(res_gu$median) * res_gu$sig
+names(gu) <- rownames(res_gu)
+gu <- data.frame(gu)
+
+j <- merge(bl,gu,by=0)
+
+rownames(j) <- j$Row.names
+j$Row.names = NULL
+
+cor.test(j$bl,j$gu)
+cor.test(j$bl,j$gu,method="spearman")
+
+sig_gu_gn <- rownames(sig_gu)
+sig_bl_gn <- rownames(sig_bl)
+l <- list("gu"=sig_gu_gn,"bl"=sig_bl_gn)
+plot(euler(l),quantities = TRUE)
+x <- intersect(sig_gu_gn,sig_bl_gn)
+
+plot(j,pch=1,cex=1,col="black",main="Median probe t-statistic for each gene")
+grid()
+
+jsig <- j[rownames(j) %in% x,]
+
+plot(j,pch=19,cex=0.6,col="darkgray",main="Median probe t-statistic for each gene")
+grid()
+
+points(jsig,cex=0.6,col="red",pch=19)
+
+UPUP <- subset(jsig,bl>0 & gu>0)
+UPUP_N <- nrow(UPUP)
+UPDN <- subset(jsig,bl>0 & gu<0)
+UPDN_N <- nrow(UPDN)
+DNUP <- subset(jsig,bl<0 & gu>0)
+DNUP_N <- nrow(DNUP)
+DNDN <- subset(jsig,bl<0 & gu<0)
+DNDN_N <- nrow(DNDN)
+
+# BL TL TR BR
+xvals <- c(-20,-20,5,5)
+yvals <- c(-20,5,5,-20)
+vals <- c(DNDN_N,DNUP_N,UPUP_N,UPDN_N)
+mtext("Number of significant genes in each quadrant is shown")
+text(xvals,yvals,vals)
+
+cor.test(j$bl,j$gu)
+cor.test(j$bl,j$gu,method="spearman")
+
+```
+
+## Now to run mitch to have a look at the pathways involved
+
+```{r,mitch}
+
+download.file("https://reactome.org/download/current/ReactomePathways.gmt.zip",
+  destfile="ReactomePathways.gmt.zip")
+unzip("ReactomePathways.gmt.zip")
+genesets <- gmt_import("ReactomePathways.gmt")
+
+res <- mitch_calc(j, genesets, priority="effect")
+
+#mitch_report(res,"asd_gmesmitch.html",overwrite=TRUE)
+
+head(res$enrichment_result,30)  %>%
+  kbl(caption="Top pathways found with GMEA-mitch") %>%
+  kable_paper("hover", full_width = F)
+
+mx <- head(res$enrichment_result,30)
+mx <- mx[,c("set","s.bl","s.gu")]
+rownames(mx) <- mx$set
+mx$set = NULL
+
+colfunc <- colorRampPalette(c("blue", "white", "red"))
+
+heatmap.2( as.matrix(mx), col=colfunc(25),scale="none",
+  trace="none",margins = c(10,25), cexCol=1.5, cexRow=.8,
+  main="Top Reactome sets with GMEA-mitch")
+
+```
+
+## Session information
+
+For reproducibility
+
+```{r,session}
+
+sessionInfo()
+
+```
