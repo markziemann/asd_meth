@@ -23,7 +23,7 @@ In this analysis we will use the principle of Gene Set Enrichment Analysis, appl
 to many probes belonging to genes.
 If the probes are trending in concert, then we can make some judgement about the
 enrichment of those probes.
-The statistical test used is the Wilcox test, which can be applied to competitive 
+The statistical test used is the 1 sided t-test, which can be applied to competitive
 or self contained test types.
 
 ```{r,libs}
@@ -73,10 +73,8 @@ hist(dm$t,breaks=seq(from=-7,to=6,by=1))
 ## Whole gene analysis
 
 ```{r,wg}
-# set cores to used for parallel execution
-CORES= detectCores()/4
 
-calc_sc <- function(dm) {
+calc_sc <- function(dm,CORES=detectCores()/2) {
   gn <- unique(unlist(strsplit( dm$UCSC_RefGene_Name ,";")))
   gnl <- strsplit( dm$UCSC_RefGene_Name ,";")
   gnl <- mclapply(gnl,unique,mc.cores=CORES)
@@ -91,13 +89,18 @@ calc_sc <- function(dm) {
   df <- do.call(rbind,l)
   gme_res <- mclapply( 1:length(gn), function(i) {
     g <- gn[i]
-    tstats <- df[which(df$genes==g),"tvals"] 
+    tstats <- df[which(df$genes==g),"tvals"]
     myn <- length(tstats)
     mymean <- mean(tstats)
     mymedian <- median(tstats)
-    wtselfcont <- wilcox.test(tstats)
+    if ( length(tstats) < 2 ) {
+    pval=1
+    } else {
+    wtselfcont <- t.test(tstats)
+    pval=wtselfcont$p.value
+    }
     res <- c("gene"=g,"nprobes"=myn,"mean"=mymean,"median"=mymedian,
-      "p-value(sc)"=wtselfcont$p.value)
+      "p-value(sc)"=pval)
   } , mc.cores=CORES )
   gme_res_df <- do.call(rbind, gme_res)
   rownames(gme_res_df) <- gme_res_df[,1]
@@ -144,6 +147,19 @@ plot(res$median , -log10(res$`p-value(sc)`) ,
 grid()
 points(sig$median , -log10(sig$`p-value(sc)`) ,
   pch=19, cex=0.5, col="red")
+
+# nprobes plot
+plot(res$nprobes,res$sig,log="x",ylim=c(0,50),pch=19,cex=0.6)
+points(sig$nprobes,sig$sig,col="red",pch=19,cex=0.62)
+MIN = min(sig$nprobes)
+LEFT = nrow(subset(res,nprobes<MIN))
+RIGHT = nrow(subset(res,nprobes>MIN))
+SIG = nrow(sig)
+TOT = nrow(res)
+HEADER <- paste(TOT, "genes in total.", SIG, "with FDR<0.05.",
+  RIGHT, "well covered and", LEFT, "poorly covered")
+mtext(HEADER)
+abline(v=MIN,lty=2)
 
 ```
 
@@ -197,10 +213,9 @@ par(mfrow=c(1,1))
 ```{r,dm1_mitch}
 
 dmscore <- data.frame( res$median * res$sig)
-
 rownames(dmscore) <- rownames(res)
-
 colnames(dmscore) <- "metric"
+hist(dmscore$metric)
 
 if ( ! file.exists("ReactomePathways.gmt") ) {
   download.file("https://reactome.org/download/current/ReactomePathways.gmt.zip",
@@ -218,14 +233,13 @@ head(mres$enrichment_result,20) %>%
   kable_paper("hover", full_width = F)
 
 mitch_report(mres,outfile="mitch_gmea_wg.html",overwrite=TRUE)
-
 ```
 
-## Wilcox gene set test
+## 1-sided T gene set test
 
-Consider using Wilcox if mitch is biased.
+Consider using 1-sided t-test if mitch is biased.
 
-```{r,wilcox_enrichment_test1}
+```{r,t_enrichment_test1}
 
 m1 <- dmscore
 gse_res <- mclapply( 1:length(genesets), function(i) {
@@ -237,7 +251,7 @@ gse_res <- mclapply( 1:length(genesets), function(i) {
     myn <- length(tstats)
     mymean <- mean(tstats)
     mymedian <- median(tstats)
-    wt <- wilcox.test(tstats)
+    wt <- t.test(tstats)
     res <- c(name,myn,mymean,mymedian,wt$p.value)
   }
 } , mc.cores = CORES)
@@ -256,11 +270,17 @@ gse_res_df$fdr <- p.adjust(gse_res_df$p.value,method="fdr")
 
 head(gse_res_df)
 
+head(gse_res_df[order(-abs(gse_res_df$t_median)),],10)
+
 head(gse_res_df,30) %>%
   kbl(caption = "Top significant genesets") %>%
   kable_paper("hover", full_width = F)
 
-sig <- subset(gse_res_df,logp>5)
+head(gse_res_df[order(-abs(gse_res_df$t_median)),],30) %>%
+  kbl(caption = "Top effect size genesets") %>%
+  kable_paper("hover", full_width = F)
+
+sig <- subset(gse_res_df,fdr<0.05)
 nsig <- nrow(sig)
 
 # volcano
@@ -446,11 +466,11 @@ mitch_report(mres,outfile="gmea_mitch_promo.html",overwrite=TRUE)
 
 ```
 
-## Wilcox gene set test
+## 1-sided t gene set test
 
-Consider using Wilcox if mitch is biased.
+Consider using 1-sided t-test if mitch is biased.
 
-```{r,wilcox_enrichment_test_2}
+```{r,t_enrichment_test_2}
 
 m1 <- res[,"median",drop=FALSE]
 gse_res <- mclapply( 1:length(genesets), function(i) {
@@ -462,7 +482,7 @@ gse_res <- mclapply( 1:length(genesets), function(i) {
     myn <- length(tstats)
     mymean <- mean(tstats)
     mymedian <- median(tstats)
-    wt <- wilcox.test(tstats)
+    wt <- t.test(tstats)
     res <- c(name,myn,mymean,mymedian,wt$p.value)
   }
 } , mc.cores = CORES)
