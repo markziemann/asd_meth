@@ -29,11 +29,12 @@ Here are the files that I'm using:
 
 library("parallel")
 library("mitch")
-library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
 source("https://raw.githubusercontent.com/markziemann/gmea/main/meth_functions.R")
 library("data.table")
 library("kableExtra")
 library("eulerr")
+library("tictoc")
 
 ```
 
@@ -52,6 +53,26 @@ gu <- read.csv("ASD_guthrie_top_dmps_onADOS_withintw_Nov27_limma.csv")
 
 ```
 
+## Probe sets
+
+For each gene, extract out the probes.
+
+```{r,probesets}
+
+anno <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+myann <- data.frame(anno[,c("UCSC_RefGene_Name","Regulatory_Feature_Group","Islands_Name","Relation_to_Island")])
+promoters <- grep("Prom",myann$Regulatory_Feature_Group)
+promoters <- myann[promoters,]
+
+gp <- myann[,"UCSC_RefGene_Name",drop=FALSE]
+gp2 <- strsplit(gp$UCSC_RefGene_Name,";")
+names(gp2) <- rownames(gp)
+sets <- split(rep(names(gp2), lengths(gp2)), unlist(gp2))
+
+summary(unlist(lapply(sets,length)))
+
+```
+
 ## GMEA
 
 This is an enrichment technique.
@@ -59,14 +80,12 @@ This is an enrichment technique.
 ```{r,func}
 
 calc_sc <- function(dm,cores=8) {
-  #dm <- bl
   dm <- dm[,c("Name","UCSC_RefGene_Name","t")]
   gn <- unique(unlist(strsplit( dm$UCSC_RefGene_Name ,";")))
   gnl <- strsplit( dm$UCSC_RefGene_Name ,";")
   gnl <- mclapply(gnl,unique,mc.cores=cores)
   dm$UCSC_RefGene_Name <- gnl
   dm <- dm[lapply(dm$UCSC_RefGene_Name,length)>0,]
-
   l <- mclapply(1:nrow(dm), function(i) {
     a <- dm[i,]
     len <- length(a[[1]][[1]])
@@ -82,10 +101,15 @@ calc_sc <- function(dm,cores=8) {
     myn <- length(tstats)
     mymean <- mean(tstats)
     mymedian <- median(tstats)
-    wtselfcont <- wilcox.test(tstats)
+    if ( length(tstats) < 2 ) {
+    pval=1
+    } else {
+    wtselfcont <- t.test(tstats)
+    pval=wtselfcont$p.value
+    }
     res <- c("gene"=g,"nprobes"=myn,"mean"=mymean,"median"=mymedian,
-      "p-value(sc)"=wtselfcont$p.value)
-  } , mc.cores=cores )
+      "p-value(sc)"=pval)
+  } , mc.cores=CORES )
   gme_res_df <- do.call(rbind, gme_res)
   rownames(gme_res_df) <- gme_res_df[,1]
   gme_res_df <- gme_res_df[,-1]
@@ -132,11 +156,31 @@ gmea_boxplot <- function(res,df,n=50) {
 }
 
 
+probe_bias <- function(res) {
+  sig <- subset(res,`p-value(sc)` < 0.05)
+  plot(res$nprobes,res$sig,log="x",
+    ylim=c(0,50),pch=19,cex=0.6,
+    xlab="no. probes",ylab="-log10(p-value)")
+  points(sig$nprobes,sig$sig,col="red",pch=19,cex=0.62)
+  MIN = min(sig$nprobes)
+  LEFT = nrow(subset(res,nprobes<MIN))
+  RIGHT = nrow(subset(res,nprobes>MIN))
+  SIG = nrow(sig)
+  TOT = nrow(res)
+  HEADER <- paste(TOT, "genes in total.", SIG, "with FDR<0.05.",
+    RIGHT, "well covered and", LEFT, "poorly covered")
+  mtext(HEADER)
+  abline(v=MIN,lty=2)
+}
+
+
 ```
 
 ## GMEA for blood
 
-```{r,bl}
+First with 1-sample t-test of limma test statistics of each gene.
+
+```{r,blt}
 
 res_bl <- calc_sc(bl)
 res_bldf <- res_bl$df
@@ -169,6 +213,21 @@ res <- res_bl
 df <- res_bldf
 
 gmea_boxplot(res=res_bl,df=res_bldf,n=50)
+
+probe_bias(res)
+
+```
+
+Now with fry test.
+
+```{r,blf}
+
+design <- readRDS(file="bl_design.rds")
+mvals <- readRDS(file="bl_mvals.rds")
+
+tic()
+fry_bl <- fry(y=mvals, index = sets, design = design, contrast = ncol(design) )
+toc()
 
 ```
 
@@ -207,6 +266,8 @@ res <- res_gu
 df <- res_gudf
 
 gmea_boxplot(res=res_gu,df=res_gudf,n=50)
+
+probe_bias(res)
 
 ```
 
@@ -264,6 +325,7 @@ text(xvals,yvals,vals)
 
 cor.test(j$bl,j$gu)
 cor.test(j$bl,j$gu,method="spearman")
+
 
 ```
 
