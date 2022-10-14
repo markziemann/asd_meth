@@ -109,7 +109,7 @@ calc_sc <- function(dm,cores=8) {
     }
     res <- c("gene"=g,"nprobes"=myn,"mean"=mymean,"median"=mymedian,
       "p-value(sc)"=pval)
-  } , mc.cores=CORES )
+  } , mc.cores=cores )
   gme_res_df <- do.call(rbind, gme_res)
   rownames(gme_res_df) <- gme_res_df[,1]
   gme_res_df <- gme_res_df[,-1]
@@ -182,9 +182,12 @@ First with 1-sample t-test of limma test statistics of each gene.
 
 ```{r,blt}
 
+tic()
 res_bl <- calc_sc(bl)
 res_bldf <- res_bl$df
 res_bl <- res_bl$gme_res_df
+res_bl$metric <- res_bl$median * res_bl$sig
+toc()
 
 head(res_bl,30) %>%
   kbl(caption="Top DM genes in blood identified with GMEA") %>%
@@ -228,6 +231,24 @@ mvals <- readRDS(file="bl_mvals.rds")
 tic()
 fry_bl <- fry(y=mvals, index = sets, design = design, contrast = ncol(design) )
 toc()
+
+fry_bl$score <- sign(as.numeric(factor(fry_bl$Direction))-1.5)  * -log10(fry_bl$PValue)
+
+```
+
+## Compare 1-sample t-test to fry test
+
+```{r,compare}
+
+m <- merge(res_bl,fry_bl,by=0)
+rownames(m) <- m$Row.names
+dim(m)
+m2 <- m[,c("metric","score")]
+colnames(m2) <- c("t","fry")
+
+plot(m2)
+cor(m2)
+cor(m2,method="s")
 
 ```
 
