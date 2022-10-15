@@ -234,11 +234,15 @@ toc()
 
 fry_bl$score <- sign(as.numeric(factor(fry_bl$Direction))-1.5)  * -log10(fry_bl$PValue)
 
+head(fry_bl,30) %>%
+  kbl(caption="Top DM genes in blood identified with fry test") %>%
+  kable_paper("hover", full_width = F)
+
 ```
 
-## Compare 1-sample t-test to fry test
+Compare 1-sample t-test to fry test
 
-```{r,compare}
+```{r,compare1}
 
 m <- merge(res_bl,fry_bl,by=0)
 rownames(m) <- m$Row.names
@@ -252,13 +256,40 @@ cor(m2,method="s")
 
 ```
 
+```{r,tfry_mitch_compare1}
+
+genesets <- gmt_import("ReactomePathways.gmt")
+
+res <- mitch_calc(m2, genesets, priority="effect")
+
+mitch_report(res,"tvsfry_bl_mitch.html",overwrite=TRUE)
+
+head(res$enrichment_result,30)  %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size)") %>%
+  kable_paper("hover", full_width = F)
+
+head(res$enrichment_result[order(res$enrichment_result$pMANOVA),],30) %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (significance)") %>%
+  kable_paper("hover", full_width = F)
+
+sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
+
+head(sig[order(-abs(sig$s.dist)),],20) %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size after 1% FDR filtering)") %>%
+  kable_paper("hover", full_width = F)
+
+```
+
 ## GMEA for Guthrie card
 
 ```{r,gu}
 
+tic()
 res_gu <- calc_sc(gu)
 res_gudf <- res_gu$df
 res_gu <- res_gu$gme_res_df
+res_gu$metric <- res_gu$median * res_gu$sig
+toc()
 
 head(res_gu,30) %>%
   kbl(caption="Top DM genes in Guthrie cards identified with GMEA") %>%
@@ -289,6 +320,63 @@ df <- res_gudf
 gmea_boxplot(res=res_gu,df=res_gudf,n=50)
 
 probe_bias(res)
+
+```
+
+Now with fry test.
+
+```{r,guf}
+
+design <- readRDS(file="gu_design.rds")
+mvals <- readRDS(file="gu_mvals.rds")
+
+tic()
+fry_gu <- fry(y=mvals, index = sets, design = design, contrast = ncol(design) )
+toc()
+
+fry_gu$score <- sign(as.numeric(factor(fry_gu$Direction))-1.5)  * -log10(fry_gu$PValue)
+
+head(fry_gu,30) %>%
+  kbl(caption="Top DM genes in Guthrie cards identified with fry test") %>%
+  kable_paper("hover", full_width = F)
+
+```
+
+Compare 1-sample t-test to fry test
+
+```{r,compare2}
+
+m <- merge(res_gu,fry_gu,by=0)
+rownames(m) <- m$Row.names
+dim(m)
+m2 <- m[,c("metric","score")]
+colnames(m2) <- c("t","fry")
+
+plot(m2)
+cor(m2)
+cor(m2,method="s")
+
+```
+
+```{r,tfry_mitch_compare2}
+
+res <- mitch_calc(m2, genesets, priority="effect")
+
+mitch_report(res,"tvsfry_gu_mitch.html",overwrite=TRUE)
+
+head(res$enrichment_result,30)  %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size)") %>%
+  kable_paper("hover", full_width = F)
+
+head(res$enrichment_result[order(res$enrichment_result$pMANOVA),],30) %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (significance)") %>%
+  kable_paper("hover", full_width = F)
+
+sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
+
+head(sig[order(-abs(sig$s.dist)),],20) %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size after 1% FDR filtering)") %>%
+  kable_paper("hover", full_width = F)
 
 ```
 
@@ -347,14 +435,15 @@ text(xvals,yvals,vals)
 cor.test(j$bl,j$gu)
 cor.test(j$bl,j$gu,method="spearman")
 
-
 ```
 
 ## Now to run mitch to have a look at the pathways involved
 
 Reactome pathways downloaded 26th September 2022.
 
-```{r,mitch}
+First for gmea 1-sample t-test.
+
+```{r,mitch1}
 
 #download.file("https://reactome.org/download/current/ReactomePathways.gmt.zip",
 #  destfile="ReactomePathways.gmt.zip")
@@ -364,6 +453,36 @@ genesets <- gmt_import("ReactomePathways.gmt")
 res <- mitch_calc(j, genesets, priority="effect")
 
 #mitch_report(res,"asd_gmesmitch.html",overwrite=TRUE)
+
+head(res$enrichment_result,30)  %>%
+  kbl(caption="Top pathways found with GMEA-mitch") %>%
+  kable_paper("hover", full_width = F)
+
+mx <- head(res$enrichment_result,30)
+mx <- mx[,c("set","s.bl","s.gu")]
+rownames(mx) <- mx$set
+mx$set = NULL
+
+colfunc <- colorRampPalette(c("blue", "white", "red"))
+
+heatmap.2( as.matrix(mx), col=colfunc(25),scale="none",
+  trace="none",margins = c(10,25), cexCol=1.5, cexRow=.8,
+  main="Top Reactome sets with GMEA-mitch")
+
+```
+
+```{r,mitch2}
+
+
+m <- merge(fry_bl,fry_gu,by=0)
+mm <- m[,c("Row.names","score.x","score.y")]
+rownames(mm) <- mm$Row.names
+mm$Row.names = NULL
+colnames(mm) <- c("bl","gu")
+
+res <- mitch_calc(mm, genesets, priority="effect")
+
+mitch_report(res,"asd_fry_mitch.html",overwrite=TRUE)
 
 head(res$enrichment_result,30)  %>%
   kbl(caption="Top pathways found with GMEA-mitch") %>%
