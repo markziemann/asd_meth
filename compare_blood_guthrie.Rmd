@@ -382,7 +382,7 @@ head(sig[order(-abs(sig$s.dist)),],20) %>%
 
 ## Compare blood and guthrie profiles
 
-```{r,compare1}
+```{r,compare3}
 
 bl <- sign(res_bl$median) * res_bl$sig
 names(bl) <- rownames(res_bl)
