@@ -473,7 +473,6 @@ heatmap.2( as.matrix(mx), col=colfunc(25),scale="none",
 
 ```{r,mitch2}
 
-
 m <- merge(fry_bl,fry_gu,by=0)
 mm <- m[,c("Row.names","score.x","score.y")]
 rownames(mm) <- mm$Row.names
@@ -482,7 +481,7 @@ colnames(mm) <- c("bl","gu")
 
 res <- mitch_calc(mm, genesets, priority="effect")
 
-mitch_report(res,"asd_fry_mitch.html",overwrite=TRUE)
+#mitch_report(res,"asd_fry_mitch.html",overwrite=TRUE)
 
 head(res$enrichment_result,30)  %>%
   kbl(caption="Top pathways found with GMEA-mitch") %>%
