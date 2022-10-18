@@ -27,14 +27,16 @@ Here are the files that I'm using:
 
 ```{r,libs}
 
-library("parallel")
-library("mitch")
-library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
-source("https://raw.githubusercontent.com/markziemann/gmea/main/meth_functions.R")
-library("data.table")
-library("kableExtra")
-library("eulerr")
-library("tictoc")
+suppressPackageStartupMessages({
+  library("parallel")
+  library("mitch")
+  library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
+  source("https://raw.githubusercontent.com/markziemann/gmea/main/meth_functions.R")
+  library("data.table")
+  library("kableExtra")
+  library("eulerr")
+  library("tictoc")
+})
 
 ```
 
@@ -43,13 +45,11 @@ library("tictoc")
 
 ```{r,load1}
 
-bl <- read.csv("ASD_blood_top_dmps_onADOS_withintw_Nov27_limma.csv")
-#rownames(bl) <- bl$Name
-#bl$Name=NULL
+bl_design <- readRDS(file="bl_design.rds")
+bl_mvals <- readRDS(file="bl_mvals.rds")
 
-gu <- read.csv("ASD_guthrie_top_dmps_onADOS_withintw_Nov27_limma.csv")
-#rownames(gu) <- gu$Name
-#gu$Name=NULL
+gu_design <- readRDS(file="gu_design.rds")
+gu_mvals <- readRDS(file="gu_mvals.rds")
 
 ```
 
@@ -63,80 +63,134 @@ anno <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
 myann <- data.frame(anno[,c("UCSC_RefGene_Name","Regulatory_Feature_Group","Islands_Name","Relation_to_Island")])
 promoters <- grep("Prom",myann$Regulatory_Feature_Group)
 promoters <- myann[promoters,]
-
 gp <- myann[,"UCSC_RefGene_Name",drop=FALSE]
 gp2 <- strsplit(gp$UCSC_RefGene_Name,";")
 names(gp2) <- rownames(gp)
 sets <- split(rep(names(gp2), lengths(gp2)), unlist(gp2))
-
 summary(unlist(lapply(sets,length)))
 
 ```
 
-## GMEA
+## GMEA functions
 
 This is an enrichment technique.
 
 ```{r,func}
 
-calc_sc <- function(dm,cores=8) {
-  dm <- dm[,c("Name","UCSC_RefGene_Name","t")]
-  gn <- unique(unlist(strsplit( dm$UCSC_RefGene_Name ,";")))
-  gnl <- strsplit( dm$UCSC_RefGene_Name ,";")
-  gnl <- mclapply(gnl,unique,mc.cores=cores)
-  dm$UCSC_RefGene_Name <- gnl
-  dm <- dm[lapply(dm$UCSC_RefGene_Name,length)>0,]
-  l <- mclapply(1:nrow(dm), function(i) {
-    a <- dm[i,]
-    len <- length(a[[1]][[1]])
-    tvals <- as.numeric(rep(a["t"],len))
-    genes <- a[[2]]
-    names(genes) <- "genes"
-    data.frame("genes"=genes,"tvals"=tvals)
-  },mc.cores=cores)
-  df <- do.call(rbind,l)
-  gme_res <- mclapply( 1:length(gn), function(i) {
-    g <- gn[i]
-    tstats <- df[which(df$genes==g),"tvals"]
+# get the median, mean and 1-sample t-test result for each gene
+pmea <- function(mval,design,sets,cores=2) {
+  fit <- lmFit(mval, design)
+  fit <- eBayes(fit)
+  top <- topTable(fit,coef=ncol(design),num=Inf, sort.by = "P")
+  l <- mclapply(seq(1,length(sets)), function(i) {
+    g <- names(sets[i])
+    tstats <- top[rownames(top) %in% sets[[i]],"t"]
     myn <- length(tstats)
     mymean <- mean(tstats)
     mymedian <- median(tstats)
     if ( length(tstats) < 2 ) {
-    pval=1
+      pval=1
     } else {
-    wtselfcont <- t.test(tstats)
-    pval=wtselfcont$p.value
+      wtselfcont <- t.test(tstats)
+      pval=wtselfcont$p.value
     }
-    res <- c("gene"=g,"nprobes"=myn,"mean"=mymean,"median"=mymedian,
-      "p-value(sc)"=pval)
+    c("gene"=g,"nprobes"=myn,"mean"=mymean,"median"=mymedian,
+      "P.Value"=pval)
+  } , mc.cores=cores)
+
+  df <- do.call(rbind, l)
+  rownames(df) <- df[,1]
+  df <- df[,-1]
+  tmp <- apply(df,2,as.numeric)
+  rownames(tmp) <- rownames(df)
+  df <- as.data.frame(tmp)
+  df$sig <- -log10(df[,4])
+  df <- df[order(-df$sig),]
+  df$FDR <- p.adjust(df$P.Value)
+  out <- list("df"=df,"toptable"=top)
+  return(out)
+}
+# pmea_res <- pmea(mval=mval,design=design,sets=head(sets,20),cores=detectCores()/2)
+
+# Run the fry test for each gene. This is a more conservative test.
+run_fry <- function(mval,design,sets,cores=2) {
+  split_sets <- split(sets, ceiling(seq_along(sets)/200))
+  fry_l <- mclapply(split_sets,function(l) {
+    fry(y=mval, index = l, design = design,
+      contrast = ncol(design) )
   } , mc.cores=cores )
-  gme_res_df <- do.call(rbind, gme_res)
-  rownames(gme_res_df) <- gme_res_df[,1]
-  gme_res_df <- gme_res_df[,-1]
-  tmp <- apply(gme_res_df,2,as.numeric)
-  rownames(tmp) <- rownames(gme_res_df)
-  gme_res_df <- as.data.frame(tmp)
-  gme_res_df$sig <- -log10(gme_res_df[,4])
-  gme_res_df <- gme_res_df[order(-gme_res_df$sig),]
-  gme_res_df$`fdr(sc)` <- p.adjust(gme_res_df$`p-value(sc)`)
-  out <- list("df"=df,"gme_res_df"=gme_res_df)
+  fry_res <- do.call(rbind,fry_l)
+  rownames(fry_res) <- sub("\\.","@",rownames(fry_res))
+  rownames(fry_res) <- sapply(strsplit(rownames(fry_res),"@"),"[[",2)
+  fry_res[is.na(fry_res$PValue),"PValue"] <- 1
+  fry_res <- fry_res[order(fry_res$PValue),]
+  fry_res$FDR <- p.adjust(fry_res$PValue,method="fdr")
+  return(fry_res)
+}
+#fry_res <- run_fry(mval=mval,design=design,sets=sets,cores=cores)
+
+# main function to perform 1-sample t-test and fry test and merge the results.
+main <- function(mval,design,sets,cores=2){
+  pmea_res <- pmea(mval=mval,design=design,sets=sets,cores=cores)
+  pmea_df <- pmea_res[[1]]
+  limma_df <- pmea_res[[2]]
+  fry_res <- run_fry(mval=mval,design=design,sets=sets,cores=cores)
+  m <- merge(pmea_df,fry_res,by=0)
+  rownames(m) <- m$Row.names
+  m$Row.names = NULL
+  m <- m[,c("nprobes","median","PValue","FDR.y")]
+  colnames(m) <- c("nprobes","median","PValue","FDR")
+  m <- m[order(m$PValue),]
+  out <- list("res"=m,"limma_df"=limma_df)
+  return(out)
+}
+#res <- main(mval,design,sets,cores=detectCores()/2)
+
+probe_bias <- function(res) {
+  res$sig <- -log10(res$PValue)
+  sig <- subset(res,FDR < 0.05)
+  plot(res$nprobes,res$sig,log="x",
+    pch=19,cex=0.6,
+    xlab="no. probes",ylab="-log10(p-value)")
+  points(sig$nprobes,sig$sig,col="red",pch=19,cex=0.62)
+  SIG = nrow(sig)
+  TOT = nrow(res)
+  HEADER <- paste(TOT, "genes in total.", SIG, "with FDR<0.05.")
+  mtext(HEADER)
 }
 
-gmea_boxplot <- function(res,df,n=50) {
+volcano_plot <- function(res) {
+  res$sig <- -log10(res$PValue)
+  sig <- subset(res,FDR < 0.05)
+  plot(res$median,res$sig,
+    pch=19,cex=0.6,
+    xlab="median t-statistic",ylab="-log10(p-value)")
+  points(sig$median,sig$sig,col="red",pch=19,cex=0.62)
+  SIG = nrow(sig)
+  UP = nrow(subset(sig,median>0))
+  DN = nrow(subset(sig,median<0))
+  TOT = nrow(res)
+  HEADER <- paste(TOT, "genes in total.", SIG, "with FDR<0.05;",DN,"down,",UP,"up")
+  mtext(HEADER)
+}
+
+gmea_boxplot <- function(res,sets,n=50) {
+  df <- res[[1]]
+  limma_df <- res[[2]]
   # smallest pval
   par(mfrow=c(1,2))
-  gs <- head(rownames(res),n)
-  tstats <- lapply(gs, function(g) {
-    df[which(df$genes==g),"tvals"]
+  gs <- head(rownames(df),n)
+  mysets <- sets[names(sets) %in% gs]
+  tstats <- lapply(mysets, function(set) {
+    limma_df[rownames(limma_df) %in% set,"t"]
   })
-  names(tstats) <- gs
   tstats <- tstats[order(unlist(lapply(tstats,median)))]
   boxplot(tstats,horizontal=TRUE,las=1,
-    main="smallest p-val(selfcont)",cex.axis=0.6,
+    main="smallest p-val",cex.axis=0.6,
     xlab="t-statistic")
   grid()
   # biggest effect size (median)
-  sig <- subset(res,`fdr(sc)` < 0.05)
+  sig <- subset(df,FDR < 0.05)
   gs <- head(rownames(sig[order(-abs(sig$median)),]),n)
   if ( length(gs) >2 ) {
     tstats <- lapply(gs, function(g) {
@@ -155,348 +209,107 @@ gmea_boxplot <- function(res,df,n=50) {
     par(mfrow=c(1,1))
 }
 
-
-probe_bias <- function(res) {
-  sig <- subset(res,`p-value(sc)` < 0.05)
-  plot(res$nprobes,res$sig,log="x",
-    ylim=c(0,50),pch=19,cex=0.6,
-    xlab="no. probes",ylab="-log10(p-value)")
-  points(sig$nprobes,sig$sig,col="red",pch=19,cex=0.62)
-  MIN = min(sig$nprobes)
-  LEFT = nrow(subset(res,nprobes<MIN))
-  RIGHT = nrow(subset(res,nprobes>MIN))
-  SIG = nrow(sig)
-  TOT = nrow(res)
-  HEADER <- paste(TOT, "genes in total.", SIG, "with FDR<0.05.",
-    RIGHT, "well covered and", LEFT, "poorly covered")
-  mtext(HEADER)
-  abline(v=MIN,lty=2)
-}
-
-
 ```
 
 ## GMEA for blood
 
-First with 1-sample t-test of limma test statistics of each gene.
+Effect size is estimated with the median t-statistic for each gene.
+Significance is estimated using the fry test.
+Results are merged for the user.
 
-```{r,blt}
+* PMEA step 196.063 sec elapsed on 8 cores
+
+* Fry step 293.569 sec elapsed on 8 cores
+
+* Fry single core 1205.519 sec
+
+```{r,bl1}
+
+bl_design <- readRDS(file="bl_design.rds")
+bl_mvals <- readRDS(file="bl_mvals.rds")
 
 tic()
-res_bl <- calc_sc(bl)
-res_bldf <- res_bl$df
-res_bl <- res_bl$gme_res_df
-res_bl$metric <- res_bl$median * res_bl$sig
-toc()
+res_bl <- main(mval=bl_mvals,design=bl_design,sets,cores=detectCores()/2)
+res_bl_df <- res[[1]] # enrichment results
+res_bl_top <- res[[2]] # limma results
+toc() ## 502-522 sec elapsed on 8 cores (8.3-8.7 mins)
 
-head(res_bl,30) %>%
+head(res_bl_df,30) %>%
   kbl(caption="Top DM genes in blood identified with GMEA") %>%
   kable_paper("hover", full_width = F)
 
-sig_bl <- subset(res_bl,`p-value(sc)` < 0.05)
+```
 
-DETECTED <- nrow(res_bl)
-SIGNIF <- nrow(sig_bl)
-UP <- nrow(subset(sig_bl,median>0))
-DN <- nrow(subset(sig_bl,median<0))
+Now some visualisations.
 
-HEADER = paste(DETECTED,"genes detected,",SIGNIF,"significant,",
-  UP,"hypermethylated,",DN,"hypomethylated")
+```{r,bl2}
 
-plot(res_bl$median,res_bl$sig,cex=0.6,pch=19,
-  col="darkgray",xlab="log2 fold change",ylab="-log10(p)",
-  main="GMEA for ASD from blood")
-
-mtext(HEADER,cex=0.9)
-grid()
-
-points(sig_bl$median,sig_bl$sig,cex=0.6,pch=19,col="red")
-
-res <- res_bl
-df <- res_bldf
-
-gmea_boxplot(res=res_bl,df=res_bldf,n=50)
-
-probe_bias(res)
+volcano_plot(res_df)
+probe_bias(res_df)
+gmea_boxplot(res,sets)
 
 ```
 
-Now with fry test.
+##  GMEA for guthrie
 
-```{r,blf}
+```{r,gu1}
 
-design <- readRDS(file="bl_design.rds")
-mvals <- readRDS(file="bl_mvals.rds")
+gu_design <- readRDS(file="gu_design.rds")
+gu_mvals <- readRDS(file="gu_mvals.rds")
 
 tic()
-fry_bl <- fry(y=mvals, index = sets, design = design, contrast = ncol(design) )
-toc()
+res_gu <- main(mval=gu_mvals,design=gu_design,sets,cores=detectCores()/2)
+res_gu_df <- res_gu[[1]] # enrichment results
+res_gu_top <- res_gu[[2]] # limma results
+toc() ## 502-522 sec elapsed on 8 cores (8.3-8.7 mins)
 
-fry_bl$score <- sign(as.numeric(factor(fry_bl$Direction))-1.5)  * -log10(fry_bl$PValue)
-
-head(fry_bl,30) %>%
-  kbl(caption="Top DM genes in blood identified with fry test") %>%
+head(res_df_gu,30) %>%
+  kbl(caption="Top DM genes in Guthrie card identified with GMEA") %>%
   kable_paper("hover", full_width = F)
 
 ```
 
-Compare 1-sample t-test to fry test
+Now some visualisations.
 
-```{r,compare1}
+```{r,gu2}
 
-m <- merge(res_bl,fry_bl,by=0)
-rownames(m) <- m$Row.names
-dim(m)
-m2 <- m[,c("metric","score")]
-colnames(m2) <- c("t","fry")
-
-plot(m2)
-cor(m2)
-cor(m2,method="s")
+volcano_plot(res_df_gu)
+probe_bias(res_df_gu)
+gmea_boxplot(res_gu,sets)
 
 ```
 
-```{r,tfry_mitch_compare1}
-
-genesets <- gmt_import("ReactomePathways.gmt")
-
-res <- mitch_calc(m2, genesets, priority="effect")
-
-mitch_report(res,"tvsfry_bl_mitch.html",overwrite=TRUE)
-
-head(res$enrichment_result,30)  %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size)") %>%
-  kable_paper("hover", full_width = F)
-
-head(res$enrichment_result[order(res$enrichment_result$pMANOVA),],30) %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (significance)") %>%
-  kable_paper("hover", full_width = F)
-
-sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
-
-head(sig[order(-abs(sig$s.dist)),],20) %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size after 1% FDR filtering)") %>%
-  kable_paper("hover", full_width = F)
-
-```
-
-## GMEA for Guthrie card
-
-```{r,gu}
-
-tic()
-res_gu <- calc_sc(gu)
-res_gudf <- res_gu$df
-res_gu <- res_gu$gme_res_df
-res_gu$metric <- res_gu$median * res_gu$sig
-toc()
-
-head(res_gu,30) %>%
-  kbl(caption="Top DM genes in Guthrie cards identified with GMEA") %>%
-  kable_paper("hover", full_width = F)
-
-sig_gu <- subset(res_gu,`p-value(sc)` < 0.05)
-
-DETECTED <- nrow(res_gu)
-SIGNIF <- nrow(sig_gu)
-UP <- nrow(subset(sig_gu,median>0))
-DN <- nrow(subset(sig_gu,median<0))
-
-HEADER = paste(DETECTED,"genes detected,",SIGNIF,"significant,",
-  UP,"hypermethylated,",DN,"hypomethylated")
-
-plot(res_gu$median,res_gu$sig,cex=0.6,pch=19,
-  col="darkgray",xlab="log2 fold change",ylab="-log10(p)",
-  main="GMEA for ASD from Guthrie cards")
-
-mtext(HEADER,cex=0.9)
-grid()
-
-points(sig_gu$median,sig_gu$sig,cex=0.6,pch=19,col="red")
-
-res <- res_gu
-df <- res_gudf
-
-gmea_boxplot(res=res_gu,df=res_gudf,n=50)
-
-probe_bias(res)
-
-```
-
-Now with fry test.
-
-```{r,guf}
-
-design <- readRDS(file="gu_design.rds")
-mvals <- readRDS(file="gu_mvals.rds")
-
-tic()
-fry_gu <- fry(y=mvals, index = sets, design = design, contrast = ncol(design) )
-toc()
-
-fry_gu$score <- sign(as.numeric(factor(fry_gu$Direction))-1.5)  * -log10(fry_gu$PValue)
-
-head(fry_gu,30) %>%
-  kbl(caption="Top DM genes in Guthrie cards identified with fry test") %>%
-  kable_paper("hover", full_width = F)
-
-```
-
-Compare 1-sample t-test to fry test
-
-```{r,compare2}
-
-m <- merge(res_gu,fry_gu,by=0)
-rownames(m) <- m$Row.names
-dim(m)
-m2 <- m[,c("metric","score")]
-colnames(m2) <- c("t","fry")
-
-plot(m2)
-cor(m2)
-cor(m2,method="s")
-
-```
-
-```{r,tfry_mitch_compare2}
-
-res <- mitch_calc(m2, genesets, priority="effect")
-
-mitch_report(res,"tvsfry_gu_mitch.html",overwrite=TRUE)
-
-head(res$enrichment_result,30)  %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size)") %>%
-  kable_paper("hover", full_width = F)
-
-head(res$enrichment_result[order(res$enrichment_result$pMANOVA),],30) %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (significance)") %>%
-  kable_paper("hover", full_width = F)
-
-sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
-
-head(sig[order(-abs(sig$s.dist)),],20) %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size after 1% FDR filtering)") %>%
-  kable_paper("hover", full_width = F)
-
-```
-
-## Compare blood and guthrie profiles
-
-```{r,compare3}
-
-bl <- sign(res_bl$median) * res_bl$sig
-names(bl) <- rownames(res_bl)
-bl <- data.frame(bl)
-
-gu <- sign(res_gu$median) * res_gu$sig
-names(gu) <- rownames(res_gu)
-gu <- data.frame(gu)
-
-j <- merge(bl,gu,by=0)
-
-rownames(j) <- j$Row.names
-j$Row.names = NULL
-
-cor.test(j$bl,j$gu)
-cor.test(j$bl,j$gu,method="spearman")
-
-sig_gu_gn <- rownames(sig_gu)
-sig_bl_gn <- rownames(sig_bl)
-l <- list("gu"=sig_gu_gn,"bl"=sig_bl_gn)
-plot(euler(l),quantities = TRUE)
-x <- intersect(sig_gu_gn,sig_bl_gn)
-
-plot(j,pch=1,cex=1,col="black",main="Median probe t-statistic for each gene")
-grid()
-
-jsig <- j[rownames(j) %in% x,]
-
-plot(j,pch=19,cex=0.6,col="darkgray",main="Median probe t-statistic for each gene")
-grid()
-
-points(jsig,cex=0.6,col="red",pch=19)
-
-UPUP <- subset(jsig,bl>0 & gu>0)
-UPUP_N <- nrow(UPUP)
-UPDN <- subset(jsig,bl>0 & gu<0)
-UPDN_N <- nrow(UPDN)
-DNUP <- subset(jsig,bl<0 & gu>0)
-DNUP_N <- nrow(DNUP)
-DNDN <- subset(jsig,bl<0 & gu<0)
-DNDN_N <- nrow(DNDN)
-
-# BL TL TR BR
-xvals <- c(-20,-20,5,5)
-yvals <- c(-20,5,5,-20)
-vals <- c(DNDN_N,DNUP_N,UPUP_N,UPDN_N)
-mtext("Number of significant genes in each quadrant is shown")
-text(xvals,yvals,vals)
-
-cor.test(j$bl,j$gu)
-cor.test(j$bl,j$gu,method="spearman")
-
-```
-
-## Now to run mitch to have a look at the pathways involved
-
-Reactome pathways downloaded 26th September 2022.
-
-First for gmea 1-sample t-test.
+## Mitch enrichment analysis
 
 ```{r,mitch1}
 
-#download.file("https://reactome.org/download/current/ReactomePathways.gmt.zip",
-#  destfile="ReactomePathways.gmt.zip")
-#unzip("ReactomePathways.gmt.zip")
 genesets <- gmt_import("ReactomePathways.gmt")
 
-res <- mitch_calc(j, genesets, priority="effect")
+res_bl_df$bl <- res_bl_df$median * -log10(res_bl_df$PValue)
+res_gu_df$gu <- res_gu_df$median * -log10(res_gu_df$PValue)
 
-#mitch_report(res,"asd_gmesmitch.html",overwrite=TRUE)
+m <- merge(res_bl_df,res_gu_df,by=0)
+rownames(m) <- m$Row.names
+m2 <- m[,c("bl","gu")]
+m2[is.na(m2)] <- 0
 
-head(res$enrichment_result,30)  %>%
-  kbl(caption="Top pathways found with GMEA-mitch") %>%
-  kable_paper("hover", full_width = F)
+res <- mitch_calc(m2, genesets, priority="effect")
 
-mx <- head(res$enrichment_result,30)
-mx <- mx[,c("set","s.bl","s.gu")]
-rownames(mx) <- mx$set
-mx$set = NULL
-
-colfunc <- colorRampPalette(c("blue", "white", "red"))
-
-heatmap.2( as.matrix(mx), col=colfunc(25),scale="none",
-  trace="none",margins = c(10,25), cexCol=1.5, cexRow=.8,
-  main="Top Reactome sets with GMEA-mitch")
-
-```
-
-```{r,mitch2}
-
-m <- merge(fry_bl,fry_gu,by=0)
-mm <- m[,c("Row.names","score.x","score.y")]
-rownames(mm) <- mm$Row.names
-mm$Row.names = NULL
-colnames(mm) <- c("bl","gu")
-
-res <- mitch_calc(mm, genesets, priority="effect")
-
-#mitch_report(res,"asd_fry_mitch.html",overwrite=TRUE)
+mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
 
 head(res$enrichment_result,30)  %>%
-  kbl(caption="Top pathways found with GMEA-mitch") %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size)") %>%
   kable_paper("hover", full_width = F)
 
-mx <- head(res$enrichment_result,30)
-mx <- mx[,c("set","s.bl","s.gu")]
-rownames(mx) <- mx$set
-mx$set = NULL
+head(res$enrichment_result[order(res$enrichment_result$pMANOVA),],30) %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (significance)") %>%
+  kable_paper("hover", full_width = F)
 
-colfunc <- colorRampPalette(c("blue", "white", "red"))
+sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
 
-heatmap.2( as.matrix(mx), col=colfunc(25),scale="none",
-  trace="none",margins = c(10,25), cexCol=1.5, cexRow=.8,
-  main="Top Reactome sets with GMEA-mitch")
+head(sig[order(-abs(sig$s.dist)),],20) %>%
+  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size after 1% FDR filtering)") %>%
+  kable_paper("hover", full_width = F)
 
 ```
 
