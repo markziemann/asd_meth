@@ -263,7 +263,7 @@ res_gu_df <- res_gu[[1]] # enrichment results
 res_gu_top <- res_gu[[2]] # limma results
 toc() ## 502-522 sec elapsed on 8 cores (8.3-8.7 mins)
 
-head(res_df_gu,30) %>%
+head(res_gu_df,30) %>%
   kbl(caption="Top DM genes in Guthrie card identified with GMEA") %>%
   kable_paper("hover", full_width = F)
 
@@ -273,8 +273,8 @@ Now some visualisations.
 
 ```{r,gu2}
 
-volcano_plot(res_df_gu)
-probe_bias(res_df_gu)
+volcano_plot(res_gu_df)
+probe_bias(res_gu_df)
 gmea_boxplot(res_gu,sets)
 
 ```
@@ -295,7 +295,7 @@ m2[is.na(m2)] <- 0
 
 res <- mitch_calc(m2, genesets, priority="effect")
 
-mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
+#mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
 
 head(res$enrichment_result,30)  %>%
   kbl(caption="Top pathways found with GMEA/fry+mitch (effect size)") %>%
