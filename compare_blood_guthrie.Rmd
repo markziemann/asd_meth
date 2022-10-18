@@ -246,7 +246,7 @@ Now some visualisations.
 
 volcano_plot(res_bl_df)
 probe_bias(res_bl_df)
-gmea_boxplot(res,sets)
+gmea_boxplot(res_bl,sets)
 
 ```
 
