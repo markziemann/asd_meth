@@ -230,8 +230,8 @@ bl_mvals <- readRDS(file="bl_mvals.rds")
 
 tic()
 res_bl <- main(mval=bl_mvals,design=bl_design,sets,cores=detectCores()/2)
-res_bl_df <- res[[1]] # enrichment results
-res_bl_top <- res[[2]] # limma results
+res_bl_df <- res_bl[[1]] # enrichment results
+res_bl_top <- res_bl[[2]] # limma results
 toc() ## 502-522 sec elapsed on 8 cores (8.3-8.7 mins)
 
 head(res_bl_df,30) %>%
