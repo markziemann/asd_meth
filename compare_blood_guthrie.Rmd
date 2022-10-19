@@ -415,7 +415,17 @@ boxplot(myl,cex=0)
 library(vioplot)
 vioplot(myl,main=myset)
 
-head(mystats[order(mystats)],20)
+mygenes <- head(mystats[order(mystats)],5)
+
+mygenes
+
+myprobes <- unique(unlist(sets[which(names(sets) %in% names(mygenes))]))
+
+myprobedat <- res_bl_top[which(rownames(res_bl_top) %in% myprobes),]
+
+myprobedat %>%
+  kbl(caption = "Probe data for top 5 genes") %>%
+  kable_paper("hover", full_width = F)
 
 ```
 
