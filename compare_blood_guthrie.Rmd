@@ -353,7 +353,7 @@ m2[is.na(m2)] <- 0
 
 res <- mitch_calc(m2, genesets, priority="effect")
 
-mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
+#mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
 
 sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
 
@@ -397,8 +397,10 @@ toc() # 1.0 sec
 sig <- subset(cres,FDR<0.05)
 
 head(sig[order(-abs(sig$median)),],20) %>%
-  kbl(caption = "Top effect size pathways found with CAMERA after 5% FDR filtering") %>%
+  kbl(caption = "BLOOD: Top effect size pathways found with CAMERA after 5% FDR filtering") %>%
   kable_paper("hover", full_width = F)
+
+cres_bl <- cres
 
 ```
 
@@ -455,11 +457,40 @@ toc() # 1.0 sec
 sig <- subset(cres,FDR<0.05)
 
 head(sig[order(-abs(sig$median)),],20) %>%
-  kbl(caption = "Top effect size pathways found with CAMERA after 5% FDR filtering") %>%
+  kbl(caption = "GUTHRIE: Top effect size pathways found with CAMERA after 5% FDR filtering") %>%
   kable_paper("hover", full_width = F)
+
+cres_gu <- cres
 
 ```
 
+## Compare CAMERA data
+
+Compare median set score for both contrasts.
+
+In the graph below, the larger points represent larger gene sets.
+
+Red fill means significant in blood contrast.
+
+Blue ring means significant in guthrie contrast.
+
+```{r,camera_compare}
+
+m4 <- merge(cres_bl,cres_gu,by=0)
+sigx <- subset(m4,FDR.x<0.05)
+sigy <- subset(m4,FDR.y<0.05)
+
+plot(m4$median.x,m4$median.y,col="gray",pch=19,cex=log10(m4$NGenes.x),
+  xlab="blood",ylab="Guthrie",main="median t-stat")
+grid()
+points(sigx$median.x,sigx$median.y,col="red",pch=19,cex=log10(sigx$NGenes.x))
+points(sigy$median.x,sigy$median.y,col="blue",pch=1,cex=log10(sigy$NGenes.x))
+
+subset(m4,FDR.x<0.05 & FDR.y<0.05 ) %>%
+  kbl(caption = "Pathways significant in blood (x) and guthrie cards (y) at 5%FDR") %>%
+  kable_paper("hover", full_width = F)
+
+```
 
 ## Session information
 
