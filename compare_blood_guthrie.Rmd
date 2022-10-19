@@ -279,8 +279,22 @@ gmea_boxplot(res_gu,sets)
 
 ```
 
-## Mitch enrichment analysis
+## Comparison of blood and guthrie card
 
+
+```{r,compare1}
+
+res_bl_df$bl <- res_bl_df$median
+res_gu_df$gu <- res_gu_df$median
+
+m1 <- merge(res_bl_df,res_gu_df,by=0)
+
+plot(m1$bl,m1$gu,xlab="bl",ylab="gu") ; grid()
+plot(rank(m1$bl),rank(m1$gu),xlab="bl rank",ylab="gu rank",cex=0.6,pch=19) ; grid()
+
+```
+
+## Mitch enrichment analysis
 
 ```{r,genesets}
 
@@ -288,66 +302,41 @@ genesets <- gmt_import("ReactomePathways.gmt")
 
 ```
 
-Just using the directional significance value.
+Here I'm using the median t-statistic for downstream enrichment.
+Pathways are from REACTOME and analysis using mitch.
 
 ```{r,mitch_direction,eval=FALSE}
 
-res_bl_df$bl <- sign(res_bl_df$median) * -log10(res_bl_df$PValue)
-res_gu_df$gu <- sign(res_gu_df$median) * -log10(res_gu_df$PValue)
+#res_bl_df$bl <- sign(res_bl_df$median) * -log10(res_bl_df$PValue)
+#res_gu_df$gu <- sign(res_gu_df$median) * -log10(res_gu_df$PValue)
 
-bl <-  res_bl_df[,"bl",drop=FALSE]
-mitch_bl <- mitch_calc(bl,genesets,priority="effect")
-head( mitch_bl$enrichment_result,10)
-sig <- subset(mitch_bl$enrichment_result,`p.adjustANOVA`<0.05)
-head(sig[order(-abs(sig$s.dist)),],10)
-
-gu <-  res_gu_df[,"gu",drop=FALSE]
-mitch_gu <- mitch_calc(gu,genesets,priority="effect")
-head( mitch_gu$enrichment_result,10)
-sig <- subset(mitch_gu$enrichment_result,`p.adjustANOVA`<0.05)
-head(sig[order(-abs(sig$s.dist)),],10)
-
-```
-
-Now using the median multiplied by the directional significance.
-
-```{r,mitch_combined, eval=FALSE}
-
-res_bl_df$bl <- res_bl_df$median * -log10(res_bl_df$PValue)
-res_gu_df$gu <- res_gu_df$median * -log10(res_gu_df$PValue)
-
-bl <-  res_bl_df[,"bl",drop=FALSE]
-mitch_bl <- mitch_calc(bl,genesets,priority="effect")
-head( mitch_bl$enrichment_result,10)
-sig <- subset(mitch_bl$enrichment_result,`p.adjustANOVA`<0.05)
-head(sig[order(-abs(sig$s.dist)),],10)
-
-gu <-  res_gu_df[,"gu",drop=FALSE]
-mitch_gu <- mitch_calc(gu,genesets,priority="effect")
-head( mitch_gu$enrichment_result,10)
-sig <- subset(mitch_gu$enrichment_result,`p.adjustANOVA`<0.05)
-head(sig[order(-abs(sig$s.dist)),],10)
-
-```
-
-Just using the median.
-
-```{r,mitch_med}
+#res_bl_df$bl <- res_bl_df$median * -log10(res_bl_df$PValue)
+#res_gu_df$gu <- res_gu_df$median * -log10(res_gu_df$PValue)
 
 res_bl_df$bl <- res_bl_df$median
 res_gu_df$gu <- res_gu_df$median
 
 bl <-  res_bl_df[,"bl",drop=FALSE]
 mitch_bl <- mitch_calc(bl,genesets,priority="effect")
-head( mitch_bl$enrichment_result,10)
+head( mitch_bl$enrichment_result,30) %>%
+  kbl(caption="BLOOD: Top effect size pathways found with mitch") %>%
+  kable_paper("hover", full_width = F)
+
 sig <- subset(mitch_bl$enrichment_result,`p.adjustANOVA`<0.05)
-head(sig[order(-abs(sig$s.dist)),],10)
+head(sig[order(-abs(sig$s.dist)),],30) %>%
+  kbl(caption="BLOOD: Top effect size pathways found with mitch after 1% FDR filtering") %>%
+  kable_paper("hover", full_width = F)
 
 gu <-  res_gu_df[,"gu",drop=FALSE]
 mitch_gu <- mitch_calc(gu,genesets,priority="effect")
-head( mitch_gu$enrichment_result,10)
+head( mitch_gu$enrichment_result,30) %>%
+  kbl(caption="GUTHRIE: Top effect size pathways found with mitch") %>%
+  kable_paper("hover", full_width = F)
+
 sig <- subset(mitch_gu$enrichment_result,`p.adjustANOVA`<0.05)
-head(sig[order(-abs(sig$s.dist)),],10)
+head(sig[order(-abs(sig$s.dist)),],30) %>%
+  kbl(caption="GUTHRIE: Top effect size pathways found with mitch after 1% FDR filtering") %>%
+  kable_paper("hover", full_width = F)
 
 ```
 
@@ -366,23 +355,17 @@ res <- mitch_calc(m2, genesets, priority="effect")
 
 mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
 
-head(res$enrichment_result,30)  %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size)") %>%
-  kable_paper("hover", full_width = F)
-
-head(res$enrichment_result[order(res$enrichment_result$pMANOVA),],30) %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (significance)") %>%
-  kable_paper("hover", full_width = F)
-
 sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
 
-head(sig[order(-abs(sig$s.dist)),],20) %>%
-  kbl(caption="Top pathways found with GMEA/fry+mitch (effect size after 1% FDR filtering)") %>%
+head(sig[order(-abs(sig$s.dist)),],30) %>%
+  kbl(caption="Top pathways found with mitch (effect size after 1% FDR filtering)") %>%
   kable_paper("hover", full_width = F)
 
 ```
 
 ## Camera enrichment analysis
+
+Camera is designed to control for correlation bias.
 
 Using the median value gives better results than the directional significance or the combined metric.
 
@@ -411,13 +394,28 @@ mymedians <- sapply(1:nrow(cres),function(i) {
 cres$median <- mymedians
 toc() # 1.0 sec
 
-head(cres,10)
-
 sig <- subset(cres,FDR<0.05)
 
 head(sig[order(-abs(sig$median)),],20) %>%
-  kbl(caption = "Top significant REACTOMEs with CAMERA") %>%
+  kbl(caption = "Top effect size pathways found with CAMERA after 5% FDR filtering") %>%
   kable_paper("hover", full_width = F)
+
+```
+
+Now drilling down to the top set.
+
+```{r,cam_bl_topset}
+
+myset <- rownames(head(sig[order(-abs(sig$median)),],1))
+myset_members <- genesets[[which(names(genesets) == myset)]]
+mystats <- stat[which(names(stat) %in% myset_members)]
+myl <- list("allgenes"=stat,myset=mystats)
+boxplot(myl,cex=0)
+
+library(vioplot)
+vioplot(myl,main=myset)
+
+head(mystats[order(mystats)],20)
 
 ```
 
@@ -444,12 +442,10 @@ mymedians <- sapply(1:nrow(cres),function(i) {
 cres$median <- mymedians
 toc() # 1.0 sec
 
-head(cres,10)
-
 sig <- subset(cres,FDR<0.05)
 
 head(sig[order(-abs(sig$median)),],20) %>%
-  kbl(caption = "Top significant REACTOMEs with CAMERA") %>%
+  kbl(caption = "Top effect size pathways found with CAMERA after 5% FDR filtering") %>%
   kable_paper("hover", full_width = F)
 
 ```
