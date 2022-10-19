@@ -281,12 +281,81 @@ gmea_boxplot(res_gu,sets)
 
 ## Mitch enrichment analysis
 
-```{r,mitch1}
+
+```{r,genesets}
 
 genesets <- gmt_import("ReactomePathways.gmt")
 
+```
+
+Just using the directional significance value.
+
+```{r,mitch_direction,eval=FALSE}
+
+res_bl_df$bl <- sign(res_bl_df$median) * -log10(res_bl_df$PValue)
+res_gu_df$gu <- sign(res_gu_df$median) * -log10(res_gu_df$PValue)
+
+bl <-  res_bl_df[,"bl",drop=FALSE]
+mitch_bl <- mitch_calc(bl,genesets,priority="effect")
+head( mitch_bl$enrichment_result,10)
+sig <- subset(mitch_bl$enrichment_result,`p.adjustANOVA`<0.05)
+head(sig[order(-abs(sig$s.dist)),],10)
+
+gu <-  res_gu_df[,"gu",drop=FALSE]
+mitch_gu <- mitch_calc(gu,genesets,priority="effect")
+head( mitch_gu$enrichment_result,10)
+sig <- subset(mitch_gu$enrichment_result,`p.adjustANOVA`<0.05)
+head(sig[order(-abs(sig$s.dist)),],10)
+
+```
+
+Now using the median multiplied by the directional significance.
+
+```{r,mitch_combined, eval=FALSE}
+
 res_bl_df$bl <- res_bl_df$median * -log10(res_bl_df$PValue)
 res_gu_df$gu <- res_gu_df$median * -log10(res_gu_df$PValue)
+
+bl <-  res_bl_df[,"bl",drop=FALSE]
+mitch_bl <- mitch_calc(bl,genesets,priority="effect")
+head( mitch_bl$enrichment_result,10)
+sig <- subset(mitch_bl$enrichment_result,`p.adjustANOVA`<0.05)
+head(sig[order(-abs(sig$s.dist)),],10)
+
+gu <-  res_gu_df[,"gu",drop=FALSE]
+mitch_gu <- mitch_calc(gu,genesets,priority="effect")
+head( mitch_gu$enrichment_result,10)
+sig <- subset(mitch_gu$enrichment_result,`p.adjustANOVA`<0.05)
+head(sig[order(-abs(sig$s.dist)),],10)
+
+```
+
+Just using the median.
+
+```{r,mitch_med}
+
+res_bl_df$bl <- res_bl_df$median
+res_gu_df$gu <- res_gu_df$median
+
+bl <-  res_bl_df[,"bl",drop=FALSE]
+mitch_bl <- mitch_calc(bl,genesets,priority="effect")
+head( mitch_bl$enrichment_result,10)
+sig <- subset(mitch_bl$enrichment_result,`p.adjustANOVA`<0.05)
+head(sig[order(-abs(sig$s.dist)),],10)
+
+gu <-  res_gu_df[,"gu",drop=FALSE]
+mitch_gu <- mitch_calc(gu,genesets,priority="effect")
+head( mitch_gu$enrichment_result,10)
+sig <- subset(mitch_gu$enrichment_result,`p.adjustANOVA`<0.05)
+head(sig[order(-abs(sig$s.dist)),],10)
+
+```
+
+Mitch joint analysis of blood and guthrie card.
+
+As using the median value is apparently the most sensitive, we'll go with that.
+
+```{r,mitch_joint}
 
 m <- merge(res_bl_df,res_gu_df,by=0)
 rownames(m) <- m$Row.names
@@ -295,7 +364,7 @@ m2[is.na(m2)] <- 0
 
 res <- mitch_calc(m2, genesets, priority="effect")
 
-#mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
+mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
 
 head(res$enrichment_result,30)  %>%
   kbl(caption="Top pathways found with GMEA/fry+mitch (effect size)") %>%
@@ -312,6 +381,79 @@ head(sig[order(-abs(sig$s.dist)),],20) %>%
   kable_paper("hover", full_width = F)
 
 ```
+
+## Camera enrichment analysis
+
+Using the median value gives better results than the directional significance or the combined metric.
+
+Blood dataset.
+
+Need to filter by FDR then sort by effect size.
+
+```{r,cam_bl}
+
+stat <- res_bl_df$median
+#stat <- res_bl_df$median * -log10(res_bl_df$PValue)
+#stat <- sign(res_bl_df$median) * -log10(res_bl_df$PValue)
+
+names(stat) <- rownames(res_bl_df)
+stat[is.na(stat)] <- 0
+
+tic()
+cres <- cameraPR(statistic=stat, index=genesets, use.ranks = FALSE, inter.gene.cor=0.01, sort = TRUE)
+cres <- subset(cres,NGenes>4)
+cres$FDR <- p.adjust(cres$PValue,method="fdr")
+mymedians <- sapply(1:nrow(cres),function(i) {
+  myset <- genesets[[which(names(genesets) == rownames(cres)[i])]]
+  mystats <- stat[names(stat) %in% myset]
+  median(mystats)
+})
+cres$median <- mymedians
+toc() # 1.0 sec
+
+head(cres,10)
+
+sig <- subset(cres,FDR<0.05)
+
+head(sig[order(-abs(sig$median)),],20) %>%
+  kbl(caption = "Top significant REACTOMEs with CAMERA") %>%
+  kable_paper("hover", full_width = F)
+
+```
+
+Guthrie dataset.
+
+```{r,cam_guth}
+
+stat <- res_gu_df$median
+#stat <- res_gu_df$median * -log10(res_gu_df$PValue)
+#stat <- sign(res_gu_df$median) * -log10(res_gu_df$PValue)
+
+names(stat) <- rownames(res_gu_df)
+stat[is.na(stat)] <- 0
+
+tic()
+cres <- cameraPR(statistic=stat, index=genesets, use.ranks = FALSE, inter.gene.cor=0.01, sort = TRUE)
+cres <- subset(cres,NGenes>4)
+cres$FDR <- p.adjust(cres$PValue,method="fdr")
+mymedians <- sapply(1:nrow(cres),function(i) {
+  myset <- genesets[[which(names(genesets) == rownames(cres)[i])]]
+  mystats <- stat[names(stat) %in% myset]
+  median(mystats)
+})
+cres$median <- mymedians
+toc() # 1.0 sec
+
+head(cres,10)
+
+sig <- subset(cres,FDR<0.05)
+
+head(sig[order(-abs(sig$median)),],20) %>%
+  kbl(caption = "Top significant REACTOMEs with CAMERA") %>%
+  kable_paper("hover", full_width = F)
+
+```
+
 
 ## Session information
 
