@@ -93,6 +93,6 @@ mytab
 
 ```{r,session}
 
-sessionInformation()
+sessionInfo()
 
 ```
