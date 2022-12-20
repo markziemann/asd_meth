@@ -1,4 +1,4 @@
-SampleID,ChipID,Sentrix_ID,Sentrix_Position,SampleName,Sex,Age_months,Age_years,Birth_mode,Birth_complications,gestational_age,Birth_weight(g),Birth_order,Help_breathing_start,Motor_skills,Social_interaction_on_ADOS,Diagnosis (L=0; M=1; H=2),SRS_social_scores,language,IQ,Family_ID
+SampleID,ChipID,Sentrix_ID,Sentrix_Position,SampleName,Sex,Age_months,Age_years,Birth_mode,Birth_complications,gestational_age,Birth_weight(g),Birth_order,Help_breathing_start,Motor_skills,Social_interaction_on_ADOS,Diagnosis,SRS_social_scores,language,IQ,Family_ID
 S3,202047860135_R03C01,202047860135,R03C01,ASD001.1,1,163,17,1,0,35,2112,1,1,2,3,0,103,53,62,1
 S4,202047860135_R04C01,202047860135,R04C01,ASD001.2,1,163,17,1,0,35,2680,2,1,2,12,2,121,61,68,1
 S31,202010290151_R07C01,202010290151,R07C01,ASD002.1,2,95,11,1,0,36,2240,1,0,2,9,1,84,113,98,2

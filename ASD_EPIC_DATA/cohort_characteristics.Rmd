@@ -1,0 +1,98 @@
+---
+title: "Characterisation of the ASD cohort"
+author: "Mark Ziemann"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    fig_width: 7
+    fig_height: 7
+theme: cosmo
+---
+
+Source: https://github.com/markziemann/asd_meth/cohort_characterisation.Rmd
+
+
+```{r,libs}
+
+library("kableExtra")
+library("magrittr")
+
+```
+
+## Intro
+
+Clinical characterisation of the cohort, shown in table 1 of the manuscript.
+
+There are 3 samplesheets provided.
+Separate ones for blood and guthrie and also a combined one where the
+
+  19 ASD_blood_summarysheet.csv
+  40 ASD_guthrie_blood_combined_summarysheet.csv
+  23 ASD_guthrie_summarysheet.csv
+
+```{r,loaddata}
+
+datg <- read.table("ASD_guthrie_summarysheet.csv",sep=",",header=TRUE)
+
+datb <- read.table("ASD_blood_summarysheet.csv",sep=",",header=TRUE)
+
+dat <- datg
+
+dat$Guthrie_sample <- TRUE
+
+dat$Blood_sample <- datg$SampleName %in% datb$Sample_Name
+
+dat %>%
+  kbl(caption="Full sample sheet of the anonymous participant data") %>%
+  kable_paper("hover", full_width = FALSE)
+
+```
+
+## Guthrie card arm summary stats
+
+Provide some summary statistics for the Guthrie arm of the project.
+
+```{r,datg}
+
+message("summary stats")
+summary(datg)
+
+message("standard deviation")
+mysd <- apply(datg,2,sd)
+format(mysd,scientific=FALSE)
+
+message("categorical counts")
+mytab <- apply(datg,2,table)
+mytab
+
+```
+
+## Blood sample arm summary stats
+
+Now for the follow-up blood samples.
+
+```{r,datb}
+
+message("summary stats")
+summary(datb)
+
+message("standard deviation")
+mysd <- apply(datb,2,sd)
+format(mysd,scientific=FALSE)
+
+message("categorical counts")
+mytab <- apply(datb,2,table)
+mytab
+
+```
+
+## Session information
+
+```{r,session}
+
+sessionInformation()
+
+```
