@@ -22,24 +22,27 @@ Here we are analysing blood methylation in 9 twin pairs.
 
 baseDir=getwd()
 dataDir=paste(baseDir,"/ASD_EPIC_DATA",sep="")
-library("missMethyl")
-library("limma")
-library("minfi")
-library("IlluminaHumanMethylation450kanno.ilmn12.hg19")
-library("IlluminaHumanMethylationEPICanno.ilm10b2.hg19")
-library("ruv")
-library("RColorBrewer")
-library("matrixStats")
-library("gplots")
-library("WGCNA")
-library("FlowSorted.Blood.450k")
-library("reshape2")
-library("ggplot2")
-library("missMethyl")
-library("DMRcate")
-library("FlowSorted.Blood.EPIC")
-library(mitch)
-library(kableExtra)
+
+suppressPackageStartupMessages({
+  library("missMethyl")
+  library("limma")
+  library("minfi")
+  library("IlluminaHumanMethylation450kanno.ilmn12.hg19")
+  library("IlluminaHumanMethylationEPICanno.ilm10b2.hg19")
+  library("ruv")
+  library("RColorBrewer")
+  library("matrixStats")
+  library("gplots")
+  library("WGCNA")
+  library("FlowSorted.Blood.450k")
+  library("reshape2")
+  library("ggplot2")
+  library("missMethyl")
+  library("DMRcate")
+  library("FlowSorted.Blood.EPIC")
+  library("mitch")
+  library("kableExtra")
+})
 
 ```
 
@@ -182,6 +185,38 @@ cells <- estimateCellCounts2(rgSet, referencePlatform= "IlluminaHumanMethylation
   returnAll = TRUE)
 
 mset <- cells$normalizedData
+
+cellCounts_new <- cells[[1]]
+#plot cell type composition by sample group
+a = cellCounts_new[targets_gen$Diagnosis == "0",]
+b = cellCounts_new[targets_gen$Diagnosis == "1",]
+c = cellCounts_new[targets_gen$Diagnosis == "2",]
+age.pal <- brewer.pal(8,"Set1")
+
+cellCounts_long <- melt(cellCounts_new, id = "celltype")
+
+cellCounts_long$Var1 <- targets_gen[match(cellCounts_long$Var1,  targets_gen$SampleID),"Diagnosis"]
+
+colnames(cellCounts_long) <- c("diagnosis","celltype","value")
+
+ggplot(cellCounts_long, aes(x = factor(celltype), y = value, fill = factor(diagnosis))) + 
+  geom_boxplot()
+
+pdf("cells_blood.pdf")
+
+par(mar=c(3,8,2,2))
+
+ggplot(cellCounts_long, aes(x = factor(celltype), y = value, fill = factor(diagnosis))) +
+  geom_boxplot()
+
+dev.off()
+
+wx <- lapply(1:ncol(cellCounts_new) , function(i) {
+  wilcox.test(a[,i],c[,i], paired=FALSE)
+} )
+names(wx) <- colnames(cellCounts_new)
+wx
+
 #densityByProbeType(mSetSq, main = "Raw")
 #densityByProbeType(mset[,1], main = "estimateCellCounts2")
 #mset_reduced <- mset[which(rownames(mset) %in% names(keep[keep==TRUE])),]
@@ -294,6 +329,19 @@ labeledHeatmap(Matrix = t(moduleTraitCor),
   cex.lab.y = 0.6, zlim = c(-1,1), 
   main = paste("PCA-trait relationships: Top principal components"))
 
+pdf("pca_blood.pdf")
+
+par(mar=c(3,8,2,2))
+
+labeledHeatmap(Matrix = t(moduleTraitCor), 
+  xLabels = colnames(loadings)[1:ncol(t(moduleTraitCor))],
+  yLabels = names(datTraits), colorLabels = FALSE, colors = blueWhiteRed(6),
+  textMatrix = t(textMatrix), setStdMargins = FALSE, cex.text = 0.5,
+  cex.lab.y = 0.6, zlim = c(-1,1), 
+  main = paste("PCA-trait relationships: Top principal components"))
+
+dev.off()
+
 ```
 
 ## Regression analysis - within twin pair on ADOS
@@ -305,7 +353,7 @@ ADOS is the outcome variable (continuous)
 mDat = mvals
 Twin_Group <- factor(targets_gen$Family_ID)
 ADOS <- targets_gen$Social_interaction_on_ADOS
-
+names(ADOS) <- targets_gen$SampleID
 design_tw <- model.matrix(~ Twin_Group + ADOS )
 
 fit_tw <- lmFit(mDat, design_tw)
@@ -316,7 +364,7 @@ head(top)
 nsig <- sum(top$adj.P.Val < 0.05)
 sum(top$P.Value< 0.05)
 
-ann_sub = 
+ann_sub =
   ann[,c("chr","pos","strand","Name","Islands_Name",
     "Relation_to_Island","UCSC_RefGene_Name","UCSC_RefGene_Group")]
 
@@ -330,6 +378,15 @@ output_1000 <- merge(ann_sub,top1000,by.x="Name",by.y="row.names")
 
 write.csv(output_1000[order(output_1000$P.Value),],
   file="ASD_blood_top_dmps_onADOS_Nov27_withintw_limma_top1k.csv",row.names=FALSE)
+
+saveRDS(design_tw, "bl_design.rds")
+saveRDS(mvals, "bl_mvals.rds")
+
+output <- output[order(output$P.Value),]
+
+output <- subset(output,P.Value<1e-4)
+
+output %>% kbl() %>% kable_paper("hover", full_width = F)
 
 ```
 
@@ -397,6 +454,12 @@ write.csv(output_ruv_1000[order(output_ruv_1000$F.p),],
 
 output_ruv <- data.frame(output_ruv[order(output_ruv$F.p),])
 
+output_ruv <- output_ruv[order(output_ruv$p_X1),]
+
+output_ruv <- subset(output_ruv,p_X1<1e-4)
+
+output_ruv %>% kbl() %>% kable_paper("hover", full_width = F)
+
 ```
 
 ## Visualise the effect of RUV adjustment
@@ -447,7 +510,7 @@ par(mfrow=c(1,1))
 plotMDS(mvals, labels=targets_gen$Sample_Name, 
   col=as.integer(factor(targets_gen$Diagnosis)),
   dim=c(14,15),
-  main="Unadjusted")
+  main="Adjusted")
 
 #legend("topleft",legend=c("Cancer","Normal"),pch=16,cex=1,col=1:2)
 
@@ -468,7 +531,44 @@ plotMDS(mvals, labels=targets_gen$Sample_Name,
 #legend
 
 ```
- 
+
+## Plotting effect sizes of top DMPs
+
+```{r,effect1}
+
+res <- read.csv("ASD_blood_topruv80pc_dmps_onADOS_withintw_Nov29.csv", header = TRUE)
+TOPPROBES <- head(res$Name,9)
+
+effect_plot <- function(PROBE) {
+  GENE <- res[which(res$Name==PROBE),"UCSC_RefGene_Name"]
+  GENE <- paste0(unique(unlist(strsplit(GENE,";"))),collapse=";")
+  HEADER=paste(GENE,PROBE)
+  BETAS <- ilogit2(mDat[rownames(mDat) == PROBE,])
+  plot(BETAS, ADOS, main = HEADER, ylab = "ADOS", xlab = "Beta Value")
+  regl5 <- lm(ADOS ~ BETAS)
+  SLOPE=signif(regl5$coefficients[2],3)
+  abline(regl5)
+  mycor <- cor.test(ADOS, BETAS, method = "pearson")
+  mycor_stat <- signif(mycor$estimate,3)
+  mycor_p <- signif(mycor$p.value,3)
+  SUBHEAD <- paste("R=",mycor_stat," p=",mycor_p," slope=",SLOPE, sep="")
+  mtext(SUBHEAD,cex=0.6)
+
+}
+
+par(mfrow=c(3,3))
+
+sapply(TOPPROBES,effect_plot)
+
+pdf("effect_blood.pdf")
+par(mfrow=c(3,3))
+sapply(TOPPROBES,effect_plot)
+dev.off()
+
+par(mfrow=c(1,1))
+
+```
+
 ## Gene ontology of top DMPs
 
 Gene Ontology analysis (gometh): top 1000 probes
@@ -491,46 +591,6 @@ write.csv(gometh_kegg, file = "GOmeth_kegg.csv", row.names = TRUE)
 gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
 head( gometh_go[order(gometh_go$P.DE),] , 20)
 write.csv(gometh_go, file = "GOmeth_go.csv", row.names = TRUE)
-
-```
-
-## Plotting effect sizes of top DMPs
-
-```{r,effect1}
-
-TOPPROBES <- head(res$Name,6)
-
-effect_plot <- function(PROBE) {
-  GENE <- res[which(res$Name==PROBE),"UCSC_RefGene_Name"]
-  GENE <- paste0(unique(unlist(strsplit(GENE,";"))),collapse=";")
-  HEADER=paste(GENE,":",PROBE)
-  BETAS <- ilogit2(mDat[rownames(mDat) == PROBE,])
-  plot(BETAS, ADOS, main = HEADER, ylab = "ADOS z-score", xlab = "Beta Value")
-  regl5 <- lm(ADOS ~ BETAS)
-  abline(regl5)
-  mycor <- cor.test(ADOS, BETAS, method = "pearson")
-  mycor_stat <- signif(mycor$estimate,3)
-  mycor_p <- signif(mycor$p.value,3)
-  SUBHEAD <- paste("R=",mycor_stat," p=",mycor_p,sep="")
-  mtext(SUBHEAD)
-
-  mybetas <- ilogit2(mDat[rownames(mDat) == PROBE])
-  mybetas <- matrix(mybetas,ncol=2)
-  mydeltabetas <- mybetas[,1]-mybetas[,2]
-  myADOS <- matrix(ADOS,ncol=2)
-  mydeltaADOS <- myADOS[,1] - myADOS[,2]
-  regl5 <- lm(mydeltaADOS ~ mydeltabetas)
-  plot(mydeltabetas,mydeltaADOS, ylab = "Delta ADOS z-score", xlab = "Delta beta Value",main=HEADER)
-  abline(regl5)
-  mycor <- cor.test(mydeltaADOS, mydeltabetas, method = "pearson")
-  mycor_stat <- signif(mycor$estimate,3)
-  mycor_p <- signif(mycor$p.value,3)
-  SUBHEAD <- paste("R=",mycor_stat," p=",mycor_p,sep="")
-  mtext(SUBHEAD)
-}
-#effect_plot(TOPPROBES[1])
-
-sapply(TOPPROBES,effect_plot)
 
 ```
 
