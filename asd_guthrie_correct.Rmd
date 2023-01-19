@@ -584,13 +584,144 @@ length(all)
 
 # kegg
 gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
-head( gometh_kegg[order(gometh_kegg$P.DE),] , 20)
-write.csv(gometh_kegg, file = "GOmeth_guthrie_kegg.csv", row.names = TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+write.csv(gometh_kegg, file = "GOmeth_kegg.csv", row.names = TRUE)
 
 # GO terms
 gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
-head( gometh_go[order(gometh_go$P.DE),] , 20)
-write.csv(gometh_go, file = "GOmeth_guthrie_go.csv", row.names = TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
+write.csv(gometh_go, file = "GOmeth_go.csv", row.names = TRUE)
+
+```
+
+Now specifically analyse hypermethylated probes
+
+```{r,gometh2}
+
+res2 <- subset(res,b_X1>0)
+sigCpGs_1k = res2$Name[1:1000]
+sigCpGs_1k = as.character(sigCpGs_1k)
+
+# kegg
+gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
+
+```
+
+Now specifically analyse hypomethylated probes
+
+```{r,gometh3}
+
+res2 <- subset(res,b_X1<0)
+sigCpGs_1k = res2$Name[1:1000]
+sigCpGs_1k = as.character(sigCpGs_1k)
+
+# kegg
+gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
+
+```
+
+## Gene ontology of top DMPs LIMMA data
+
+Gene Ontology analysis (gometh): top 1000 probes (limma data).
+
+```{r,gometh4}
+
+res <- read.csv("ASD_blood_top_dmps_onADOS_withintw_Nov27_limma.csv", header = TRUE)
+sigCpGs_1k = res$Name[1:1000]
+
+sigCpGs_1k = as.character(sigCpGs_1k)
+all = res$Name
+length(all)
+
+# kegg
+gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
+
+```
+
+Now specifically analyse hypermethylated probes
+
+```{r,gometh5}
+
+res2 <- subset(res,logFC>0)
+sigCpGs_1k = res2$Name[1:1000]
+sigCpGs_1k = as.character(sigCpGs_1k)
+
+# kegg
+gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
+
+```
+
+Now specifically analyse hypomethylated probes
+
+```{r,gometh6}
+
+res2 <- subset(res,logFC<0)
+sigCpGs_1k = res2$Name[1:1000]
+sigCpGs_1k = as.character(sigCpGs_1k)
+
+# kegg
+gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
 
 ```
 
