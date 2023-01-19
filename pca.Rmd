@@ -1,0 +1,300 @@
+---
+title: "Autism Spectrum Disorder Methylation analysis - principal component analysis."
+author: "Namitha Mohandras, Mark Ziemann"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    fig_width: 7
+    fig_height: 7
+theme: cosmo
+---
+
+Source: https://github.com/markziemann/asd_meth
+
+## Introduction
+
+Here we are conducting a PCA analysis of the entire sample set including guthrie
+neonatal blood spots and peripheral blood at assessment.
+
+```{r,libs}
+
+library("kableExtra")
+library("limma")
+
+```
+
+## MDS for all 
+Now load the data.
+
+```{r,load}
+
+bldat <- readRDS("bl_mvals.rds")
+dim(bldat)
+
+gudat <- readRDS("gu_mvals.rds")
+dim(gudat)
+
+mgdat <- merge(gudat,bldat,by=0)
+rownames(mgdat) <- mgdat$Row.names
+mgdat$Row.names = NULL
+
+dim(mgdat)
+
+ss <- read.table("ASD_EPIC_DATA/ASD_guthrie_blood_combined_summarysheet.csv",sep=",",header=TRUE)
+
+```
+
+Start with a scree plot to show the number of important dimensions.
+
+```{r,scree}
+
+myscree <- function(mx,n=10,main="") {
+  pc <- princomp(mx)$sdev
+  pcp <- pc/sum(pc)*100
+  pcp <- pcp[1:10]
+  barplot(pcp,cex.names = 1,las=2,ylim=c(0,70),
+      ylab="percent (%) variance explained", main=main)
+  text((0.5:length(pcp)*1.2),pcp,label=signif(pcp,3),pos=3,cex=0.8)
+}
+
+myscree(mgdat)
+
+
+```
+
+Now plot an MDS plot for all samples.
+
+
+```{r,mds01}
+
+#mds <- plotMDS(mgdat)
+
+mds <- cmdscale(dist(t(mgdat)))
+
+XMAX=max(mds[,1])*1.1
+XMIN=min(mds[,1])*1.1
+mycolours <- as.character(as.numeric(colnames(mgdat) %in% colnames(bldat)) )
+mycolours <- gsub("0","pink",mycolours)
+mycolours <- gsub("1","lightblue",mycolours)
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",
+  col=mycolours )
+
+text(mds, labels=colnames(mgdat) )
+
+legend("topright", legend=c("Neonatal","Assessment"), pch=19,cex=1.5,col=c("pink","lightblue"))
+
+pdf("MDS.pdf")
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",
+  col=mycolours )
+text(mds, labels=colnames(mgdat) )
+legend("topright", legend=c("Neonatal","Assessment"), pch=19,cex=1.5,col=c("pink","lightblue"))
+dev.off()
+
+```
+
+Now let's look at the guthrie card methylation profiles with scree and MDS plots.
+
+Here, we look at the all probes in the data.
+
+```{r,gumds1}
+
+guss <- ss[ss$SampleID %in% colnames(gudat),]
+
+head(gudat)
+
+myscree(gudat)
+
+mds <- cmdscale(dist(t(gudat)))
+
+map2color<-function(x,pal,limits=NULL){
+    if(is.null(limits)) limits=range(x)
+    pal[findInterval(x,seq(limits[1],limits[2],length.out=length(pal)+1), all.inside=TRUE)]
+}
+
+# gestational age
+colfunc <- colorRampPalette(c("gray", "red"))(100)
+mycolours <- map2color(guss$gestational_age,colfunc)
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="neonatal blood, coloured by gestational age",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("grey=young,pink=older")
+
+# sex: 1=male 2=female
+mycolours <- gsub("2","pink",gsub("1","lightblue",as.character(guss$Sex)))
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="neonatal blood, coloured by sex",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("lightblue=male,pink=female")
+
+# birth complications
+mycolours <- gsub("3","red",gsub("2","orange",gsub("1","yellow",gsub("0","lightgray",as.character(guss$Birth_complications)))))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="neonatal blood, coloured by birth complications",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("grey=none, yellow,moderate, orange,high, red=severe")
+
+# help required to start breathing
+mycolours <- gsub("1","pink",gsub("0","lightgray",as.character(guss$Help_breathing_start)))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="help to start breathing",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("grey=none, pink=help")
+
+# birth weight
+bw <- guss$Birth_weight.g.
+mypal <- colorRampPalette( c( "lightblue", "pink" ) )( 100 )
+mycolours <- map2color(bw,mypal)
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="birth weight",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("lightblue=1.1kg, pink=3.4kg")
+
+# birth order
+mycolours <- gsub("1","lightblue",gsub("2","pink",as.character(guss$Birth_order)))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="birth order",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("lightblue=1, pink=2")
+
+# motor skills
+mycolours <- gsub("2","red",gsub("1","orange",gsub("0","yellow",as.character(guss$Motor_skills))))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="motor skills",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("yellow=low, orange=medium, red=high")
+
+# family ID
+mycolours <- map2color(guss$Family_ID,rainbow(13))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="Family ID",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("siblings have adjacent numbers")
+
+```
+
+Now look at only the top 1000 probes by SD.
+
+These charts are similar to what Namitha got, so the result is confirmed.
+I think we should discuss why only the top 1000 probes are used in the chart though.
+
+```{r,gumds2}
+
+top=1000
+
+mysd <- apply(gudat,1,sd)
+topprobes <- names(head(mysd[order(-mysd)],1000))
+gudat2 <- gudat[rownames(gudat) %in% topprobes,]
+
+
+head(gudat2)
+
+myscree(gudat2)
+
+mds <- cmdscale(dist(t(gudat2)))
+XMAX=max(mds[,1])*1.1
+XMIN=min(mds[,1])*1.1
+
+# gestational age
+colfunc <- colorRampPalette(c("gray", "red"))(100)
+mycolours <- map2color(guss$gestational_age,colfunc)
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="neonatal blood, coloured by gestational age",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("grey=young,pink=older")
+
+# sex: 1=male 2=female
+mycolours <- gsub("2","pink",gsub("1","lightblue",as.character(guss$Sex)))
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="neonatal blood, coloured by sex",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("lightblue=male,pink=female")
+
+# birth complications
+mycolours <- gsub("3","red",gsub("2","orange",gsub("1","yellow",gsub("0","lightgray",as.character(guss$Birth_complications)))))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="neonatal blood, coloured by birth complications",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("grey=none, yellow,moderate, orange,high, red=severe")
+
+# help required to start breathing
+mycolours <- gsub("1","pink",gsub("0","lightgray",as.character(guss$Help_breathing_start)))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="help to start breathing",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("grey=none, pink=help")
+
+# birth weight
+bw <- guss$Birth_weight.g.
+mypal <- colorRampPalette( c( "lightblue", "pink" ) )( 100 )
+mycolours <- map2color(bw,mypal)
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="birth weight",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("lightblue=1.1kg, pink=3.4kg")
+
+# birth order
+mycolours <- gsub("1","lightblue",gsub("2","pink",as.character(guss$Birth_order)))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="birth order",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("lightblue=1, pink=2")
+
+# motor skills
+mycolours <- gsub("2","red",gsub("1","orange",gsub("0","yellow",as.character(guss$Motor_skills))))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="motor skills",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("yellow=low, orange=medium, red=high")
+
+# family ID
+mycolours <- map2color(guss$Family_ID,rainbow(13))
+
+plot( mds , xlab="Coordinate 1", ylab="Coordinate 2",
+  main="Family ID",
+  pch=19,cex=3, xlim=c(XMIN,XMAX),bty="n",col=mycolours )
+text(mds, labels=rownames(mds) )
+mtext("siblings have adjacent numbers")
+
+```
+
+## Session information
+
+For reproducibility.
+
+```{r,sessioninfo}
+
+sessionInfo()
+
+```

@@ -35,6 +35,8 @@ suppressPackageStartupMessages({
   library("data.table")
   library("kableExtra")
   library("eulerr")
+  library("RIdeogram")
+  library("GenomicRanges")
   library("tictoc")
 })
 
@@ -211,7 +213,7 @@ gmea_boxplot <- function(res,sets,n=50) {
 
 ```
 
-## GMEA for blood
+## Gene level enrichment for blood
 
 Effect size is estimated with the median t-statistic for each gene.
 Significance is estimated using the fry test.
@@ -250,7 +252,7 @@ gmea_boxplot(res_bl,sets)
 
 ```
 
-##  GMEA for guthrie
+## Gene level enrichment for guthrie cards
 
 ```{r,gu1}
 
@@ -281,7 +283,6 @@ gmea_boxplot(res_gu,sets)
 
 ## Comparison of blood and guthrie card
 
-
 ```{r,compare1}
 
 res_bl_df$bl <- res_bl_df$median
@@ -294,13 +295,17 @@ plot(rank(m1$bl),rank(m1$gu),xlab="bl rank",ylab="gu rank",cex=0.6,pch=19) ; gri
 
 ```
 
-## Mitch enrichment analysis
+## Gene set level enrichment
 
-```{r,genesets}
+```{r,genesets1}
 
 genesets <- gmt_import("ReactomePathways.gmt")
 
+cores = 8
+
 ```
+
+## Mitch enrichment analysis
 
 Here I'm using the median t-statistic for downstream enrichment.
 Pathways are from REACTOME and analysis using mitch.
@@ -489,6 +494,192 @@ points(sigy$median.x,sigy$median.y,col="blue",pch=1,cex=log10(sigy$NGenes.x))
 subset(m4,FDR.x<0.05 & FDR.y<0.05 ) %>%
   kbl(caption = "Pathways significant in blood (x) and guthrie cards (y) at 5%FDR") %>%
   kable_paper("hover", full_width = F)
+
+```
+
+## Distinguishing ASD from birth
+
+Here I will use MDS plot to cluster samples.
+
+First I will use all probes, then I will focus on a subset of candidate probes.
+
+```{r,mds1}
+
+plot(cmdscale(dist(t(bl_mvals))), xlab="Coordinate 1", ylab="Coordinate 2",
+  type = "n",main="Blood")
+mtext("Numbers indicate ADOS score")
+text(cmdscale(dist(t(bl_mvals))), labels=bl_design[,"ADOS"], )
+
+plot(cmdscale(dist(t(gu_mvals))), xlab="Coordinate 1", ylab="Coordinate 2", 
+  type = "n",main="Guthrie card")
+mtext("Numbers indicate ADOS score")
+text(cmdscale(dist(t(gu_mvals))), labels=bl_design[,"ADOS"], )
+
+```
+
+There is no apparent clustering by ADOS score, indicating a subtle effect.
+
+Now I will examine the probes associated with the pathway of interest.
+
+```{r,mds2}
+
+myprobes
+
+myprobedat <- bl_mvals[which(rownames(bl_mvals) %in% myprobes),]
+plot(cmdscale(dist(t(myprobedat))), xlab="Coordinate 1", ylab="Coordinate 2",
+  type = "n",main="Blood")
+text(cmdscale(dist(t(myprobedat))), labels=bl_design[,"ADOS"], )
+
+myprobedat <- gu_mvals[which(rownames(gu_mvals) %in% myprobes),]
+plot(cmdscale(dist(t(myprobedat))), xlab="Coordinate 1", ylab="Coordinate 2",
+  type = "n",main="Guthrie card")
+text(cmdscale(dist(t(myprobedat))), labels=bl_design[,"ADOS"], )
+
+```
+
+Again, there is no apparent clustering by ADOS score.
+This indicates that the top probes cannot be used diagnostically.
+
+```{r,mds3}
+
+bl_lim <- read.csv("ASD_blood_top_dmps_onADOS_withintw_Nov27_limma.csv")
+myprobes2 <- head(bl_lim$Name,50)
+myprobedat2 <- bl_mvals[which(rownames(bl_mvals) %in% myprobes2),]
+plot(cmdscale(dist(t(myprobedat2))), xlab="Coordinate 1", ylab="Coordinate 2",
+  type = "n",main="Blood")
+text(cmdscale(dist(t(myprobedat2))), labels=bl_design[,"ADOS"], )
+
+gu_lim <- read.csv("ASD_guthrie_top_dmps_onADOS_withintw_Nov27_limma.csv")
+myprobes2 <- head(gu_lim$Name,50)
+myprobedat2 <- gu_mvals[which(rownames(gu_mvals) %in% myprobes2),]
+plot(cmdscale(dist(t(myprobedat2))), xlab="Coordinate 1", ylab="Coordinate 2",
+  type = "n", main="Guthrie")
+text(cmdscale(dist(t(myprobedat2))), labels=bl_design[,"ADOS"], )
+
+```
+
+MDS analysis of top probes identified without correction for covariates.
+
+```{r,woc1}
+
+bl_design2 <- bl_design[,c(1,10)]
+fit <- lmFit(bl_mvals, bl_design2)
+fit <- eBayes(fit)
+summary(decideTests(fit))
+top <- topTable(fit,coef="ADOS",num=Inf, sort.by = "P")
+head(top)
+myprobes3 <- rownames(top)[1:20]
+
+myprobedat3 <- bl_mvals[which(rownames(bl_mvals) %in% myprobes3),]
+plot(cmdscale(dist(t(myprobedat3))), xlab="Coordinate 1", ylab="Coordinate 2",
+  type = "n",main="Blood")
+text(cmdscale(dist(t(myprobedat3))), labels=bl_design[,"ADOS"], )
+
+```
+
+```{r,woc2}
+
+gu_design2 <- gu_design[,c(1,12)]
+fit <- lmFit(gu_mvals, gu_design2)
+fit <- eBayes(fit)
+summary(decideTests(fit))
+top <- topTable(fit,coef="ADOS",num=Inf, sort.by = "P")
+head(top)
+myprobes3 <- rownames(top)[1:20]
+
+myprobedat3 <- gu_mvals[which(rownames(gu_mvals) %in% myprobes3),]
+plot(cmdscale(dist(t(myprobedat3))), xlab="Coordinate 1", ylab="Coordinate 2", 
+  type = "n",main="Guthrie")
+text(cmdscale(dist(t(myprobedat3))), labels=bl_design[,"ADOS"], )
+
+```
+
+Again it was unsuccessful.
+
+## Try ebGSEA
+
+ebGSEA uses globaltest to identify DMGs from infinium data.
+Some points to note:
+
+* only 1 sided test - does not distinguish between up and down methylated genes.
+
+* cannot use complex experiment designs.
+
+Therefore I modify how the ebGSEA code uses globaltest.
+
+```{r,bl_ebgsea}
+
+library("globaltest")
+
+#bl_gt <- doGT(bl_design,bl_mvals,array="850k",ncores=16)
+data.m <- bl_mvals
+
+subsets <- mclapply(mapEIDto850k.lv,intersect,rownames(data.m),mc.cores = 16)
+nrep.v <- unlist(lapply(subsets,length))
+selG.idx <- which(nrep.v>0)
+
+gt.o <- gt(response=bl_design[,"ADOS"], alternative=t(data.m), model="linear",
+  directional = TRUE, standardize = FALSE, permutations = 0,
+  subsets=subsets[selG.idx],trace=F)
+
+gt_res <- result(gt.o)
+gt_res <- gt_res[order(gt_res$`p-value`),]
+
+
+```
+
+## Gene set level enrichment
+
+```{r,genesets2}
+
+genesets <- gmt_import("ReactomePathways.gmt")
+
+cores = 8
+
+```
+
+Aggregate mval to genes and examine pathway enrichment in blood.
+
+```{r,gsmea_bl}
+
+gsmea <- function(mval,design,probesets,genesets,cores=2) {
+  ag <- mclapply(probesets,function(ps) {
+    mval <- mval[rownames(mval) %in% ps,,drop=FALSE]
+    if (nrow(mval>1)) {
+      o <- apply(mval,2,median)
+    } else {
+      o <- mval
+    }
+   o
+  },mc.cores=cores)
+  ag <- do.call(rbind,ag)
+  res <- main(mval=ag,design=design,sets=genesets,cores=cores )
+}
+
+tic()
+bl_gsmea <- gsmea(mval=bl_mvals,design=bl_design,probesets=sets,genesets=genesets,cores=8)
+toc()
+
+
+bl_gsmea$res <- subset(bl_gsmea$res,nprobes>=5)
+bl_gsmea$res$FDR <- p.adjust(bl_gsmea$res$PValue,method="fdr")
+
+head(bl_gsmea$res,20)
+
+```
+
+Guthrie card pathway analysis.
+
+```{r,gsmea_gu}
+
+tic()
+gu_gsmea <- gsmea(mval=gu_mvals,design=gu_design,probesets=sets,genesets=genesets,cores=8)
+toc()
+
+gu_gsmea$res <- subset(gu_gsmea$res,nprobes>=5)
+gu_gsmea$res$FDR <- p.adjust(gu_gsmea$res$PValue,method="fdr")
+
+head(gu_gsmea$res,20)
 
 ```
 
