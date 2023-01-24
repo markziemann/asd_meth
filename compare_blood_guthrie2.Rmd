@@ -38,6 +38,9 @@ suppressPackageStartupMessages({
   library("RIdeogram")
   library("GenomicRanges")
   library("tictoc")
+  library("globaltest")
+  library("ebGSEA")
+  data("dualmap850kEID")
 })
 
 ```
@@ -232,13 +235,28 @@ bl_mvals <- readRDS(file="bl_mvals.rds")
 
 tic()
 res_bl <- main(mval=bl_mvals,design=bl_design,sets,cores=detectCores()/2)
+res_bl[[1]] <- subset(res_bl[[1]],nprobes!=0) # remove genes with no probes obvs
 res_bl_df <- res_bl[[1]] # enrichment results
+
 res_bl_top <- res_bl[[2]] # limma results
 toc() ## 502-522 sec elapsed on 8 cores (8.3-8.7 mins)
 
 head(res_bl_df,30) %>%
   kbl(caption="Top DM genes in blood identified with GMEA") %>%
   kable_paper("hover", full_width = F)
+
+par(mfrow=c(2,1))
+hist(res_bl_top$t,xlab="probe t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
+hist(res_bl_df$median,xlab="gene median t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
+
+pdf("hist_bl.pdf")
+par(mfrow=c(2,1))
+hist(res_bl_top$t,xlab="probe t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
+plot(1)
+hist(res_bl_df$median,xlab="gene median t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
+plot(1)
+dev.off()
+par(mfrow=c(1,1))
 
 ```
 
@@ -261,13 +279,28 @@ gu_mvals <- readRDS(file="gu_mvals.rds")
 
 tic()
 res_gu <- main(mval=gu_mvals,design=gu_design,sets,cores=detectCores()/2)
+res_gu[[1]] <- subset(res_gu[[1]],nprobes!=0) # remove genes with no probes obvs
 res_gu_df <- res_gu[[1]] # enrichment results
+
 res_gu_top <- res_gu[[2]] # limma results
 toc() ## 502-522 sec elapsed on 8 cores (8.3-8.7 mins)
 
 head(res_gu_df,30) %>%
   kbl(caption="Top DM genes in Guthrie card identified with GMEA") %>%
   kable_paper("hover", full_width = F)
+
+par(mfrow=c(2,1))
+hist(res_gu_top$t,xlab="probe t-stat",main="neonatal Guthrie card") ; grid() ; abline(v=0,lty=1,lwd=3)
+hist(res_gu_df$median,xlab="gene median t-stat",main="neonatal Guthrie card") ; grid() ; abline(v=0,lty=1,lwd=3)
+
+pdf("hist_gu.pdf")
+par(mfrow=c(2,1))
+hist(res_gu_top$t,xlab="probe t-stat",main="neonatal Guthrie card") ; grid() ; abline(v=0,lty=1,lwd=3)
+plot(1)
+hist(res_gu_df$median,xlab="gene median t-stat",main="neonatal Guthrie card") ; grid() ; abline(v=0,lty=1,lwd=3)
+plot(1)
+dev.off()
+par(mfrow=c(1,1))
 
 ```
 
@@ -283,6 +316,8 @@ gmea_boxplot(res_gu,sets)
 
 ## Comparison of blood and guthrie card
 
+Now compare blood and guthrie card
+
 ```{r,compare1}
 
 res_bl_df$bl <- res_bl_df$median
@@ -290,8 +325,97 @@ res_gu_df$gu <- res_gu_df$median
 
 m1 <- merge(res_bl_df,res_gu_df,by=0)
 
-plot(m1$bl,m1$gu,xlab="bl",ylab="gu") ; grid()
-plot(rank(m1$bl),rank(m1$gu),xlab="bl rank",ylab="gu rank",cex=0.6,pch=19) ; grid()
+m2 <- m1[,c("Row.names","bl","gu")]
+
+rownames(m2) <- m2$Row.names
+m2$Row.names=NULL
+
+plot(m2$bl,m2$gu,xlab="bl",ylab="gu", 
+  col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,
+  pch=19,cex=0.9) 
+grid()
+abline(v=0,lty=1,lwd=3,col="black") ; abline(h=0,lty=1,lwd=3,col="black")
+mtext("aggregated t-statistic for each gene (median)")
+
+#plot(rank(m1$bl),rank(m1$gu),xlab="bl rank",ylab="gu rank",cex=0.6,pch=19) ; grid()
+
+rm2 <- apply(m2,2,rank)
+mydiff <- apply(m2,2,function(x) { length(which(x<0)) } )
+rm3 <- rm2
+rm3[,1] <- rm3[,1] - mydiff[1]
+rm3[,2] <- rm3[,2] - mydiff[2]
+
+rnk <- rm3
+
+    palette <- colorRampPalette(c("white", "yellow", "orange", "red", 
+        "darkred", "black"))
+    xmin = min(rnk[, 1])
+    xmax = max(rnk[, 1])
+    ymin = min(rnk[, 2])
+    ymax = max(rnk[, 2])
+    k <- MASS::kde2d(rnk[, 1], rnk[, 2])
+    X_AXIS = paste("Rank in contrast", colnames(rnk)[1])
+    Y_AXIS = paste("Rank in contrast", colnames(rnk)[2])
+    filled.contour(k, xlim = c(xmin, xmax), ylim = c(ymin, ymax), 
+        color.palette = palette, plot.title = {
+            abline(v = 0, h = 0, lty = 2, lwd = 2, col = "blue")
+            title(main = "Rank-rank plot of all genes", xlab = X_AXIS, 
+            ylab = Y_AXIS)
+        })
+
+
+pdf("genedens.pdf")
+par(mfrow=c(2,2))
+plot(1)
+plot(1)
+
+plot(m2$bl,m2$gu,xlab="bl",ylab="gu",
+  col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,
+  pch=19,cex=0.9)
+grid()
+abline(v=0, h=0, lty=2, lwd=2, col="blue")
+mtext("aggregated t-statistic for each gene (median)")
+
+    filled.contour(k, xlim = c(xmin, xmax), ylim = c(ymin, ymax), 
+        color.palette = palette, plot.title = {
+            abline(v = 0, h = 0, lty = 2, lwd = 2, col = "blue")
+            title(main = "Rank-rank plot of all genes", xlab = X_AXIS, 
+            ylab = Y_AXIS)
+        })
+
+dev.off()
+
+
+```
+
+Now we need a table of genes with top scores.
+
+```{r,topgenes1}
+
+m3 <- m2
+m3$med <- apply(rnk,1,median)
+
+mg <- merge(res_gu_df,res_bl_df,by=0)
+mg$gu = mg$bl = NULL
+mg$med <- m3$med
+
+mg2 <- data.frame(mg,rnk)
+
+mg2$med <- apply(rnk,1,median)
+
+mg2 <- mg2[order(mg2$med),]
+
+mg2 <-subset(mg2,nprobes.x>=5)
+
+head(mg2,20) %>%
+  kbl(caption="Genes with coordinated hypomethylation in neonatal Guthrie card and blood at assessment") %>%
+  kable_paper("hover", full_width = F)
+
+mg2 <- mg2[order(-mg2$med),]
+
+head(mg2,20) %>%
+  kbl(caption="Genes with coordinated hypermethylation in neonatal Guthrie card and blood at assessment") %>%
+  kable_paper("hover", full_width = F)
 
 ```
 
@@ -607,9 +731,9 @@ Some points to note:
 
 Therefore I modify how the ebGSEA code uses globaltest.
 
-```{r,bl_ebgsea}
+item mapEIDto850k.lv : A list mapping Entrez Gene ID to 850k probes
 
-library("globaltest")
+```{r,bl_ebgsea}
 
 #bl_gt <- doGT(bl_design,bl_mvals,array="850k",ncores=16)
 data.m <- bl_mvals
