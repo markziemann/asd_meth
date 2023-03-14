@@ -1,0 +1,328 @@
+---
+title: "Autism Spectrum Disorder Methylation Analysis - A Look At Covariates"
+author: "Namitha Mohandras, Mark Ziemann"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    fig_width: 7
+    fig_height: 7
+theme: cosmo
+---
+
+Source: https://github.com/markziemann/asd_meth
+
+## Introduction
+
+Here we are looking at the clinical covariates, to see the correlation structure between
+ADOS, SRS, motor skills, language, IQ and anything else I can find.
+There is no methylation data in this analysis.
+
+```{r, packages}
+
+suppressPackageStartupMessages({
+  library("RColorBrewer")
+  library("gplots")
+  library("ggplot2")
+  library("beeswarm")
+})
+
+```
+
+## Load data
+
+Load the clinical characteristics.
+
+```{r,load_data1}
+
+x <- read.csv("ASD_EPIC_DATA/ASD_blood_summarysheet.csv")
+
+```
+
+## Exploratory analysis
+
+We will be exploring how the dependent variables associate with the dependent variables.
+
+Independent variables: Sex, Age, Birth_mode, Birth_complications, gestational_age,
+Birth_weight.g., Birth_order, Help_breathing_start.
+
+Dependent vaiables: Motor_skills, Social_interaction_on_ADOS, Diagnosis, SRS_social_scores,
+language, IQ.
+
+Ideally I should be able to create a function to do this more or less automatically,
+but the data are in different forms (categories, ordinals, vectors), so it might be complicated.
+
+First I will look at sex (2 categories).
+
+```{r,sex}
+
+table(x$Sex)
+length(which(x$Sex==1))
+length(which(x$Sex==2))
+
+message("sex-motorskills")
+wilcox.test(subset(x,Sex==1)$Motor_skills,subset(x,Sex==2)$Motor_skills)
+l <- list("sex1"=subset(x,Sex==1)$Motor_skills,"sex2"=subset(x,Sex==2)$Motor_skills)
+beeswarm(l,ylab="motor skills",cex=2,pch=19)
+
+message("sex-ados")
+wilcox.test(subset(x,Sex==1)$Social_interaction_on_ADOS,subset(x,Sex==2)$Social_interaction_on_ADOS)
+l <- list("sex1"=subset(x,Sex==1)$Social_interaction_on_ADOS,"sex2"=subset(x,Sex==2)$Social_interaction_on_ADOS)
+beeswarm(l,ylab="ADOS",cex=2,pch=19)
+
+message("sex-diagnosis")
+wilcox.test(subset(x,Sex==1)$Diagnosis,subset(x,Sex==2)$Diagnosis)
+l <- list("sex1"=subset(x,Sex==1)$Diagnosis,"sex2"=subset(x,Sex==2)$Diagnosis)
+beeswarm(l,ylab="Diagnosis",cex=2,pch=19)
+
+message("sex-srs")
+wilcox.test(subset(x,Sex==1)$SRS_social_scores,subset(x,Sex==2)$SRS_social_scores)
+l <- list("sex1"=subset(x,Sex==1)$SRS_social_scores,"sex2"=subset(x,Sex==2)$SRS_social_scores)
+beeswarm(l,ylab="SRS",cex=2,pch=19)
+
+message("sex-language")
+wilcox.test(subset(x,Sex==1)$language,subset(x,Sex==2)$language)
+l <- list("sex1"=subset(x,Sex==1)$language,"sex2"=subset(x,Sex==2)$language)
+beeswarm(l,ylab="language",cex=2,pch=19)
+
+message("sex-IQ")
+wilcox.test(subset(x,Sex==1)$IQ,subset(x,Sex==2)$IQ)
+l <- list("sex1"=subset(x,Sex==1)$IQ,"sex2"=subset(x,Sex==2)$IQ)
+beeswarm(l,ylab="IQ",cex=2,pch=19)
+
+message("sex-famID")
+wilcox.test(subset(x,Sex==1)$Family_ID,subset(x,Sex==2)$Family_ID)
+l <- list("sex1"=subset(x,Sex==1)$Family_ID,"sex2"=subset(x,Sex==2)$Family_ID)
+beeswarm(l,ylab="Family_ID",cex=2,pch=19)
+
+```
+
+Now I will look at Birth_mode (categorical).
+
+```{r,birthmode}
+
+table(x$Birth_mode)
+
+message("birthmode-motorskills")
+wilcox.test(subset(x,Birth_mode==1)$Motor_skills,subset(x,Birth_mode==2)$Motor_skills)
+l <- list("Birth_mode1"=subset(x,Birth_mode==1)$Motor_skills,"Birth_mode2"=subset(x,Birth_mode==2)$Motor_skills)
+beeswarm(l,ylab="motor skills",cex=2,pch=19)
+
+message("Birth_mode-ados")
+wilcox.test(subset(x,Birth_mode==1)$Social_interaction_on_ADOS,subset(x,Birth_mode==2)$Social_interaction_on_ADOS)
+l <- list("Birth_mode1"=subset(x,Birth_mode==1)$Social_interaction_on_ADOS,"Birth_mode2"=subset(x,Birth_mode==2)$Social_interaction_on_ADOS)
+beeswarm(l,ylab="ADOS",cex=2,pch=19)
+
+message("Birth_mode-diagnosis")
+wilcox.test(subset(x,Birth_mode==1)$Diagnosis,subset(x,Birth_mode==2)$Diagnosis)
+l <- list("Birth_mode1"=subset(x,Birth_mode==1)$Diagnosis,"Birth_mode2"=subset(x,Birth_mode==2)$Diagnosis)
+beeswarm(l,ylab="Diagnosis",cex=2,pch=19)
+
+message("Birth_mode-srs")
+wilcox.test(subset(x,Birth_mode==1)$SRS_social_scores,subset(x,Birth_mode==2)$SRS_social_scores)
+l <- list("Birth_mode1"=subset(x,Birth_mode==1)$SRS_social_scores,"Birth_mode2"=subset(x,Birth_mode==2)$SRS_social_scores)
+beeswarm(l,ylab="SRS",cex=2,pch=19)
+
+message("Birth_mode-language")
+wilcox.test(subset(x,Birth_mode==1)$language,subset(x,Birth_mode==2)$language)
+l <- list("Birth_mode1"=subset(x,Birth_mode==1)$language,"Birth_mode2"=subset(x,Birth_mode==2)$language)
+beeswarm(l,ylab="language",cex=2,pch=19)
+
+message("Birth_mode-IQ")
+wilcox.test(subset(x,Birth_mode==1)$IQ,subset(x,Birth_mode==2)$IQ)
+l <- list("Birth_mode1"=subset(x,Birth_mode==1)$IQ,"Birth_mode2"=subset(x,Birth_mode==2)$IQ)
+beeswarm(l,ylab="IQ",cex=2,pch=19)
+
+message("Birth_mode-famID")
+wilcox.test(subset(x,Birth_mode==1)$Family_ID,subset(x,Birth_mode==2)$Family_ID)
+l <- list("Birth_mode1"=subset(x,Birth_mode==1)$Family_ID,"Birth_mode2"=subset(x,Birth_mode==2)$Family_ID)
+beeswarm(l,ylab="Family_ID",cex=2,pch=19)
+
+```
+
+Now look at breathing assistance (categorical).
+
+```{r,breathing}
+
+# Help_breathing_start-motorskills
+wilcox.test(subset(x,Help_breathing_start==0)$Motor_skills,subset(x,Help_breathing_start==1)$Motor_skills)
+l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$Motor_skills,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$Motor_skills)
+beeswarm(l,ylab="motor skills",cex=2,pch=19)
+
+#Help_breathing_start-ados
+wilcox.test(subset(x,Help_breathing_start==0)$Social_interaction_on_ADOS,subset(x,Help_breathing_start==1)$Social_interaction_on_ADOS)
+l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$Social_interaction_on_ADOS,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$Social_interaction_on_ADOS)
+beeswarm(l,ylab="ADOS",cex=2,pch=19)
+
+#Help_breathing_start-diagnosis
+wilcox.test(subset(x,Help_breathing_start==0)$Diagnosis,subset(x,Help_breathing_start==1)$Diagnosis)
+l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$Diagnosis,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$Diagnosis)
+beeswarm(l,ylab="Diagnosis",cex=2,pch=19)
+
+#Help_breathing_start-srs 
+wilcox.test(subset(x,Help_breathing_start==0)$SRS_social_scores,subset(x,Help_breathing_start==1)$SRS_social_scores)
+l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$SRS_social_scores,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$SRS_social_scores)
+beeswarm(l,ylab="SRS",cex=2,pch=19)
+
+#Help_breathing_start-language
+wilcox.test(subset(x,Help_breathing_start==0)$language,subset(x,Help_breathing_start==1)$language)
+l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$language,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$language)
+beeswarm(l,ylab="language",cex=2,pch=19)
+
+#Help_breathing_start-IQ      
+wilcox.test(subset(x,Help_breathing_start==0)$IQ,subset(x,Help_breathing_start==1)$IQ)
+l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$IQ,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$IQ)
+beeswarm(l,ylab="IQ",cex=2,pch=19)
+
+#Help_breathing_start-famID
+wilcox.test(subset(x,Help_breathing_start==0)$Family_ID,subset(x,Help_breathing_start==1)$Family_ID)
+l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$Family_ID,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$Family_ID)
+beeswarm(l,ylab="Family_ID",cex=2,pch=19)
+
+```
+
+Now look at birth complications (categorical).
+
+```{r,birthcomplications}
+
+table(x$Birth_complications)
+
+message("birthmode-motorskills")
+wilcox.test(subset(x,Birth_complications==0)$Motor_skills,subset(x,Birth_complications>0)$Motor_skills)
+l <- list("Birth_complications1"=subset(x,Birth_complications==0)$Motor_skills,"Birth_complications2"=subset(x,Birth_complications>0)$Motor_skills)
+beeswarm(l,ylab="motor skills",cex=2,pch=19)
+
+message("Birth_complications-ados")
+wilcox.test(subset(x,Birth_complications==0)$Social_interaction_on_ADOS,subset(x,Birth_complications>0)$Social_interaction_on_ADOS)
+l <- list("No_Birth_complications"=subset(x,Birth_complications==0)$Social_interaction_on_ADOS,"Birth_complications"=subset(x,Birth_complications>0)$Social_interaction_on_ADOS)
+beeswarm(l,ylab="ADOS",cex=2,pch=19)
+
+message("Birth_complications-diagnosis")
+wilcox.test(subset(x,Birth_complications==0)$Diagnosis,subset(x,Birth_complications>0)$Diagnosis)
+l <- list("No_Birth_complications"=subset(x,Birth_complications==0)$Diagnosis,"Birth_complications"=subset(x,Birth_complications>0)$Diagnosis)
+beeswarm(l,ylab="Diagnosis",cex=2,pch=19)
+
+message("Birth_complications-srs")
+wilcox.test(subset(x,Birth_complications==0)$SRS_social_scores,subset(x,Birth_complications>0)$SRS_social_scores)
+l <- list("No_Birth_complications"=subset(x,Birth_complications==0)$SRS_social_scores,"Birth_complications"=subset(x,Birth_complications>0)$SRS_social_scores)
+beeswarm(l,ylab="SRS",cex=2,pch=19)
+
+message("Birth_complications-language")
+wilcox.test(subset(x,Birth_complications==0)$language,subset(x,Birth_complications>0)$language)
+l <- list("No_Birth_complications"=subset(x,Birth_complications==0)$language,"Birth_complications"=subset(x,Birth_complications>0)$language)
+beeswarm(l,ylab="language",cex=2,pch=19)
+
+message("Birth_complications-IQ")
+wilcox.test(subset(x,Birth_complications==0)$IQ,subset(x,Birth_complications>0)$IQ)
+l <- list("No_Birth_complications"=subset(x,Birth_complications==0)$IQ,"Birth_complications"=subset(x,Birth_complications>0)$IQ)
+beeswarm(l,ylab="IQ",cex=2,pch=19)
+
+message("Birth_complications-famID")
+wilcox.test(subset(x,Birth_complications==0)$Family_ID,subset(x,Birth_complications>0)$Family_ID)
+l <- list("No_Birth_complications"=subset(x,Birth_complications==0)$Family_ID,"Birth_complications"=subset(x,Birth_complications>0)$Family_ID)
+beeswarm(l,ylab="Family_ID",cex=2,pch=19)
+
+```
+
+Now look at gestational age (continuous).
+
+```{r,gest_age}
+
+x$gestational_age
+summary(x$gestational_age)
+hist(x$gestational_age)
+
+message("gestational_age-motor_skills")
+mylm <- lm(x$Motor_skills ~ x$gestational_age)
+summary(mylm)
+plot(x$gestational_age,x$Motor_skills,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("gestational_age-ADOS")
+mylm <- lm(x$Social_interaction_on_ADOS ~ x$gestational_age)
+summary(mylm)
+plot(x$gestational_age,x$Social_interaction_on_ADOS,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("gestational_age-Diagnosis")
+mylm <- lm(x$Diagnosis ~ x$gestational_age)
+summary(mylm)
+plot(x$gestational_age,x$Diagnosis,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("gestational_age-SRS")
+mylm <- lm(x$SRS_social_scores ~ x$gestational_age)
+summary(mylm)
+plot(x$gestational_age,x$SRS_social_scores,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("gestational_age-language")
+mylm <- lm(x$language ~ x$gestational_age)
+summary(mylm)
+plot(x$gestational_age,x$language,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("gestational_age-IQ")
+mylm <- lm(x$IQ ~ x$gestational_age)
+summary(mylm)
+plot(x$gestational_age,x$IQ,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+```
+
+Now look at birthweight (continuous).
+
+```{r,gest_age}
+
+x$Birth_weight.g.
+summary(x$Birth_weight.g.)
+hist(x$Birth_weight.g.)
+
+message("birthweight-motor_skills")
+mylm <- lm(x$Motor_skills ~ x$Birth_weight.g.)
+summary(mylm)
+plot(x$Birth_weight.g.,x$Motor_skills,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("Birth_weight.g.-ADOS")
+mylm <- lm(x$Social_interaction_on_ADOS ~ x$Birth_weight.g.)
+summary(mylm)
+plot(x$Birth_weight.g.,x$Social_interaction_on_ADOS,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("Birth_weight.g.-Diagnosis")
+mylm <- lm(x$Diagnosis ~ x$Birth_weight.g.)
+summary(mylm)
+plot(x$Birth_weight.g.,x$Diagnosis,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("Birth_weight.g.-SRS")
+mylm <- lm(x$SRS_social_scores ~ x$Birth_weight.g.)
+summary(mylm)
+plot(x$Birth_weight.g.,x$SRS_social_scores,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("Birth_weight.g.-language")
+mylm <- lm(x$language ~ x$Birth_weight.g.)
+summary(mylm)
+plot(x$Birth_weight.g.,x$language,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+message("Birth_weight.g.-IQ")
+mylm <- lm(x$IQ ~ x$Birth_weight.g.)
+summary(mylm)
+plot(x$Birth_weight.g.,x$IQ,cex=2,pch=19)
+abline(mylm,col="red",lty=2,lwd=2)
+
+```
+
+
+## Session information
+
+```{r,sessioninfo}
+
+sessionInfo()
+
+```
