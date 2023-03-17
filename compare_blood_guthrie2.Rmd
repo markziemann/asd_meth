@@ -482,7 +482,8 @@ m2[is.na(m2)] <- 0
 
 res <- mitch_calc(m2, genesets, priority="effect")
 
-#mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
+mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
+mitch_plots(res=res,outfile="blgu_mitch.pdf")
 
 sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
 
@@ -529,6 +530,10 @@ head(sig[order(-abs(sig$median)),],20) %>%
   kbl(caption = "BLOOD: Top effect size pathways found with CAMERA after 5% FDR filtering") %>%
   kable_paper("hover", full_width = F)
 
+
+nrow(subset(cres,FDR<0.05 & Direction=="Up"))
+nrow(subset(cres,FDR<0.05 & Direction=="Down"))
+
 cres_bl <- cres
 
 ```
@@ -559,6 +564,8 @@ myprobedat %>%
   kable_paper("hover", full_width = F)
 
 ```
+
+
 
 Guthrie dataset.
 
@@ -614,10 +621,85 @@ plot(m4$median.x,m4$median.y,col="gray",pch=19,cex=log10(m4$NGenes.x),
 grid()
 points(sigx$median.x,sigx$median.y,col="red",pch=19,cex=log10(sigx$NGenes.x))
 points(sigy$median.x,sigy$median.y,col="blue",pch=1,cex=log10(sigy$NGenes.x))
+abline(v=0,h=0,lty=2,lwd=3)
+
+par(mfrow=c(1,1))
+pdf("camera_pw.pdf")
+
+plot(m4$median.x,m4$median.y,col="gray",pch=19,cex=log10(m4$NGenes.x),
+  xlab="blood",ylab="Guthrie",main="median t-stat")
+grid()
+points(sigx$median.x,sigx$median.y,col="red",pch=19,cex=log10(sigx$NGenes.x))
+points(sigy$median.x,sigy$median.y,col="blue",pch=1,cex=log10(sigy$NGenes.x))
+abline(v=0,h=0,lty=2,lwd=3)
+
+dev.off()
 
 subset(m4,FDR.x<0.05 & FDR.y<0.05 ) %>%
   kbl(caption = "Pathways significant in blood (x) and guthrie cards (y) at 5%FDR") %>%
   kable_paper("hover", full_width = F)
+
+```
+
+make scatterplots of the top sets
+
+```{r,topsets}
+
+XMAX=max(res$ranked_profile[,1])
+XMIN=min(res$ranked_profile[,1])
+YMAX=max(res$ranked_profile[,2])
+YMIN=min(res$ranked_profile[,2])
+plot(res$detailed_sets[[1]], pch=19,cex=2,col="lightgray",
+  xlim=c(XMIN,XMAX),ylim=c(YMIN,YMAX),
+  xlab="blood",ylab="Guthrie")
+text(res$detailed_sets[[1]],labels=rownames(res$detailed_sets[[1]]))
+mtext(names(res$detailed_sets)[[1]])
+grid() ; abline(v=0,h=0,lty=2,lwd=3)
+
+pdf("c3_metabotropic.pdf")
+
+plot(res$detailed_sets[[1]], pch=19,cex=2,col="lightgray",
+  xlim=c(XMIN,XMAX),ylim=c(YMIN,YMAX), 
+  xlab="blood",ylab="Guthrie")
+text(res$detailed_sets[[1]],labels=rownames(res$detailed_sets[[1]]))
+mtext(names(res$detailed_sets)[[1]])
+grid() ; abline(v=0,h=0,lty=2,lwd=3)
+
+dev.off()
+
+
+```
+
+Make heatmap of top set.
+
+
+```{r,topsetheat1}
+
+topset<- rownames(res$detailed_sets[[1]])
+probes <- unlist(sets[which(names(sets) %in% topset)])
+topm <- bl_mvals[which(rownames(bl_mvals) %in% probes),]
+
+colfunc <- colorRampPalette(c("yellow", "red"))
+col_pal <- colfunc(length(min(bl_design[,"ADOS"]):max(bl_design[,"ADOS"])))
+mycols <- col_pal[bl_design[,"ADOS"]]
+
+colfunc2 <- colorRampPalette(c("blue", "white", "red"))
+
+heatmap.2(topm,scale="row",trace="none",ColSideColors=mycols,col=colfunc2(25),
+  main="C/3 receptor methylation in blood")
+
+topset<- rownames(res$detailed_sets[[1]])
+probes <- unlist(sets[which(names(sets) %in% topset)])
+topm <- gu_mvals[which(rownames(gu_mvals) %in% probes),]
+
+colfunc <- colorRampPalette(c("yellow", "red"))
+col_pal <- colfunc(length(min(gu_design[,"ADOS"]):max(gu_design[,"ADOS"])))
+mycols <- col_pal[gu_design[,"ADOS"]]
+
+colfunc2 <- colorRampPalette(c("blue", "white", "red"))
+
+heatmap.2(topm,scale="row",trace="none",ColSideColors=mycols,col=colfunc2(25),
+  main="C/3 receptor methylation in Guthrie cards")
 
 ```
 

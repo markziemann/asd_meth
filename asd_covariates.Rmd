@@ -23,6 +23,8 @@ There is no methylation data in this analysis.
 ```{r, packages}
 
 suppressPackageStartupMessages({
+  library("kableExtra")
+  library("dplyr")
   library("RColorBrewer")
   library("gplots")
   library("ggplot2")
@@ -42,6 +44,55 @@ x <- read.csv("ASD_EPIC_DATA/ASD_blood_summarysheet.csv")
 ```
 
 ## Exploratory analysis
+
+Make an overview of the clinical data with a heatmap.
+
+```{r,heat1}
+
+dat <- x[,8:20]
+
+heatmap.2(t(dat),trace="none",scale="row",mar=c(5,12))
+
+heatmap.2(cor(dat,method="s"),trace="none",scale="none",mar=c(12,12),
+  main="spearman correlation of covariates")
+
+heatmap.2(cor(t(dat),method="s"),trace="none",scale="none",mar=c(12,12), 
+  main="spearman correlation of participants")
+
+
+```
+
+## Dimensions of ASD
+
+Let's take a look at the correlations of dimensions:
+
+* Motor skills
+
+* Social interaction score (ADOS)
+
+* Diagnosis
+
+* Social responsiveness score (SRS)
+
+* Language
+
+* IQ
+
+```{r,dimensions}
+
+head(dat)
+dat2 <- dat[,8:13]
+
+heatmap.2(cor(dat2,method="s"),trace="none",scale="none",
+  mar=c(12,12),cexRow=1,cexCol=1)
+
+cor(dat2,method="s") %>%
+  kbl(caption = "Spearman correlation of") %>%
+  kable_paper("hover", full_width = F)
+
+```
+
+## Independent-Dependent Variable Analysis
 
 We will be exploring how the dependent variables associate with the dependent variables.
 
@@ -146,37 +197,37 @@ Now look at breathing assistance (categorical).
 
 ```{r,breathing}
 
-# Help_breathing_start-motorskills
+message("Help_breathing_start-motorskills")
 wilcox.test(subset(x,Help_breathing_start==0)$Motor_skills,subset(x,Help_breathing_start==1)$Motor_skills)
 l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$Motor_skills,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$Motor_skills)
 beeswarm(l,ylab="motor skills",cex=2,pch=19)
 
-#Help_breathing_start-ados
+message("Help_breathing_start-ados")
 wilcox.test(subset(x,Help_breathing_start==0)$Social_interaction_on_ADOS,subset(x,Help_breathing_start==1)$Social_interaction_on_ADOS)
 l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$Social_interaction_on_ADOS,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$Social_interaction_on_ADOS)
 beeswarm(l,ylab="ADOS",cex=2,pch=19)
 
-#Help_breathing_start-diagnosis
+message("Help_breathing_start-diagnosis")
 wilcox.test(subset(x,Help_breathing_start==0)$Diagnosis,subset(x,Help_breathing_start==1)$Diagnosis)
 l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$Diagnosis,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$Diagnosis)
 beeswarm(l,ylab="Diagnosis",cex=2,pch=19)
 
-#Help_breathing_start-srs 
+message("Help_breathing_start-srs")
 wilcox.test(subset(x,Help_breathing_start==0)$SRS_social_scores,subset(x,Help_breathing_start==1)$SRS_social_scores)
 l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$SRS_social_scores,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$SRS_social_scores)
 beeswarm(l,ylab="SRS",cex=2,pch=19)
 
-#Help_breathing_start-language
+message("Help_breathing_start-language")
 wilcox.test(subset(x,Help_breathing_start==0)$language,subset(x,Help_breathing_start==1)$language)
 l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$language,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$language)
 beeswarm(l,ylab="language",cex=2,pch=19)
 
-#Help_breathing_start-IQ      
+message("Help_breathing_start-IQ")
 wilcox.test(subset(x,Help_breathing_start==0)$IQ,subset(x,Help_breathing_start==1)$IQ)
 l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$IQ,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$IQ)
 beeswarm(l,ylab="IQ",cex=2,pch=19)
 
-#Help_breathing_start-famID
+message("Help_breathing_start-famID")
 wilcox.test(subset(x,Help_breathing_start==0)$Family_ID,subset(x,Help_breathing_start==1)$Family_ID)
 l <- list("Help_breathing_start1"=subset(x,Help_breathing_start==0)$Family_ID,"Help_breathing_start2"=subset(x,Help_breathing_start==1)$Family_ID)
 beeswarm(l,ylab="Family_ID",cex=2,pch=19)
@@ -274,7 +325,7 @@ abline(mylm,col="red",lty=2,lwd=2)
 
 Now look at birthweight (continuous).
 
-```{r,gest_age}
+```{r,birthweight}
 
 x$Birth_weight.g.
 summary(x$Birth_weight.g.)

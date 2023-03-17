@@ -269,7 +269,10 @@ legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
 
 fit <- prcomp(t(mValsSq),center = TRUE, scale = TRUE,retx=TRUE)
 loadings = fit$x
+saveRDS(fit,"scree_blood_fitnc.Rds")
+
 plot(fit,type="lines")
+
 nGenes = nrow(mValsSq)
 nSamples = ncol(mValsSq)
 datTraits = targets_gen[,7:15]
