@@ -21,15 +21,15 @@ effect_plot <- function(PROBE) {
 
 # enrichment on genomic compartments, like exons, TSSs, etc
 compartment_enrichment <- function(dma) {
+  all <- table(unlist(lapply(strsplit(dma$UCSC_RefGene_Group,";"),unique)))
   up <- subset(dma,logFC>0 & P.Value<1e-4)
+  up <- table(unlist(lapply(strsplit(up$UCSC_RefGene_Group,";"),unique)))
   dn <- subset(dma,logFC<0 & P.Value<1e-4)
-  all <- table(unique(dma)$Regulatory_Feature_Group)
-  up <- table(unique(up)$Regulatory_Feature_Group)
-  dn <- table(unique(dn)$Regulatory_Feature_Group)
+  dn <- table(unlist(lapply(strsplit(dn$UCSC_RefGene_Group,";"),unique)))
+
   xx=NULL
   xx <- merge(as.data.frame(all, row.names = 1),as.data.frame(up,row.names = 1),by=0, all = TRUE)
   rownames(xx) <- xx[,1]
-  rownames(xx)[1] <- "Intergenic"
   xx[,1] = NULL
   colnames(xx) <- c("all","up")
   xx[is.na(xx)] <- 0
@@ -76,12 +76,12 @@ compartment_enrichment <- function(dma) {
 # enrichment on genomic compartments, like exons, TSSs, etc
 # but only for the top 1000 probes
 compartment_enrichment2 <- function(dma) {
-  all <- table(unique(dma)$Regulatory_Feature_Group)
+  all <- table(unlist(lapply(strsplit(dma$UCSC_RefGene_Group,";"),unique)))
   dma <- head(dma,1000)
   up <- subset(dma,logFC>0 )
+  up <- table(unlist(lapply(strsplit(up$UCSC_RefGene_Group,";"),unique)))
   dn <- subset(dma,logFC<0 )
-  up <- table(unique(up)$Regulatory_Feature_Group)
-  dn <- table(unique(dn)$Regulatory_Feature_Group)
+  dn <- table(unlist(lapply(strsplit(dn$UCSC_RefGene_Group,";"),unique)))
   xx=NULL
   xx <- merge(as.data.frame(all, row.names = 1),as.data.frame(up,row.names = 1),by=0, all = TRUE)
   rownames(xx) <- xx[,1]
