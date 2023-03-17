@@ -151,18 +151,18 @@ Looking for enrichments in different genomic compartments.
 
 par(mfrow=c(2,1))
 
-if (nrow(subset(dma1,P.Value <1e-4)) > 100 ) {
 # guthrie
 dma1 <- read.csv("limma_guthrie_ADOS.csv")
+if (nrow(subset(dma1,P.Value <1e-4)) > 100 ) {
 comp <- compartment_enrichment(dma1)
 comp <- lapply(comp,function(x) {subset(x,OR!=0)} )
 comp
 make_forest_plots(comp)
 }
 
-if (nrow(subset(dma2,P.Value <1e-4)) > 100 ) {
 # blood
 dma2 <- read.csv("limma_blood_ADOS.csv")
+if (nrow(subset(dma2,P.Value <1e-4)) > 100 ) {
 comp <- compartment_enrichment(dma2)
 comp <- lapply(comp,function(x) {subset(x,OR!=0)} )
 comp
