@@ -383,11 +383,19 @@ saveRDS(mvals, "bl_mvals.rds")
 ```
 
 Other models:
-* motor
+
+* motor skills impairment
+
 * diagnosis
+
 * SRS
-* iiq
-* ilangguage
+
+* inverse IQ
+
+* inverse langguage
+
+
+## Regression analysis - within twin pair on motor skills
 
 ```{r,reg2}
 
@@ -404,6 +412,11 @@ output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_motor.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="motor") %>% kable_paper("hover", full_width = F)
 
+```
+
+## Regression analysis - within twin pair on diagnosis
+
+```{r,reg3}
 #diagnosis:0,3.080605e-05
 design_tw <- model.matrix(~ Twin_Group + diagnosis )
 fit_tw <- lmFit(mvals, design_tw)
@@ -416,6 +429,12 @@ output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_diagnosis.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="diagnosis") %>% kable_paper("hover", full_width = F)
+
+```
+
+## Regression analysis - within twin pair on SRS
+
+```{r,reg4}
 
 #SRS:0,1.895198e-07
 design_tw <- model.matrix(~ Twin_Group + SRS )
@@ -431,6 +450,12 @@ output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_SRS.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="SRS score") %>% kable_paper("hover", full_width = F)
 
+```
+
+## Regression analysis - within twin pair on inverse IQ
+
+```{r,reg5}
+
 #iiq:0,1.326967e-05
 design_tw <- model.matrix(~ Twin_Group + iiq )
 fit_tw <- lmFit(mvals, design_tw)
@@ -444,6 +469,12 @@ output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_iIQ.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="inverse IQ") %>% kable_paper("hover", full_width = F)
+
+```
+
+## Regression analysis - within twin pair on inverse language skills
+
+```{r,reg6}
 
 #ilanguage:0,9.149182e-08
 design_tw <- model.matrix(~ Twin_Group + ilanguage )
