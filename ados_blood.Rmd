@@ -379,7 +379,7 @@ output <- output[order(output$P.Value),]
 write.csv(output, file="limma_blood_ADOS.csv",row.names=FALSE)
 output <- subset(output,P.Value<1e-4)
 head(output,30) %>% kbl() %>% kable_paper("hover", full_width = F)
-saveRDS(design_tw, "bl_design.rds")
+saveRDS(design_tw, "bl_design_ados.rds")
 saveRDS(mvals, "bl_mvals.rds")
 
 ```
@@ -413,6 +413,7 @@ output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_motor.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="motor") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "bl_design_motor.rds")
 
 ```
 
@@ -431,6 +432,8 @@ output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_diagnosis.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="diagnosis") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "bl_design_diagnosis.rds")
+
 
 ```
 
@@ -451,6 +454,7 @@ output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_SRS.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="SRS score") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "bl_design_srs.rds")
 
 ```
 
@@ -471,6 +475,7 @@ output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_iIQ.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="inverse IQ") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "bl_design_iiq.rds")
 
 ```
 
@@ -491,6 +496,7 @@ output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 output <- output[order(output$P.Value),]
 write.csv(output,file="limma_blood_ilanguage.csv",row.names=FALSE)
 head(output,30) %>% kbl(caption="inverse language") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "bl_design_ilanguage.rds")
 
 ```
 
