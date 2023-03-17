@@ -124,24 +124,6 @@ mdsPlot(mset.raw, sampGroups = targets_gen$Sex,
 
 ```
 
-## Normalisation
-
-SQN is used as it gave a more stable result.
-
-```{r,norm1}
-
-#SQN method
-mSetSq = preprocessQuantile(rgSet)
-
-densityPlot(rgSet, sampGroups = targets_gen$Social_interaction_on_ADOS,
-  main="Raw", legend = FALSE)
-
-densityPlot(getBeta(mSetSq), 
-  sampGroups = targets_gen$Social_interaction_on_ADOS,main="SQN", 
-  legend = FALSE)
-
-```
-
 ## Cell type composition analysis
 
 Need to consider using estimatecellcounts2.
@@ -221,15 +203,6 @@ wx <- lapply(1:ncol(cellCounts_new) , function(i) {
 } )
 names(wx) <- colnames(cellCounts_new)
 wx
-
-#densityByProbeType(mSetSq, main = "Raw")
-#densityByProbeType(mset[,1], main = "estimateCellCounts2")
-#mset_reduced <- mset[which(rownames(mset) %in% names(keep[keep==TRUE])),]
-#meth <- getMeth(mset_reduced)
-#unmeth <- getUnmeth(mset_reduced)
-#Mval <- log2((meth + 100)/(unmeth + 100))
-#beta <- getBeta(mset_reduced)
-#dim(Mval)
 
 ```
 
