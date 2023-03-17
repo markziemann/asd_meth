@@ -44,6 +44,8 @@ suppressPackageStartupMessages({
   library("kableExtra")
 })
 
+source("meth_functions")
+
 ```
 
 ## Load data
@@ -514,28 +516,8 @@ write.csv(bDat,file="ASD_guthrie_beta_onADOS_withintw_Nov27.csv",row.names=TRUE)
 ```{r,effect1}
 
 res <- read.csv("limma_guthrie_ADOS.csv")
-
 TOPPROBES <- head(res$Name,9)
-
-effect_plot <- function(PROBE) {
-  GENE <- res[which(res$Name==PROBE),"UCSC_RefGene_Name"]
-  GENE <- paste0(unique(unlist(strsplit(GENE,";"))),collapse=";")
-  HEADER=paste(GENE,PROBE)
-  BETAS <- ilogit2(mvals[rownames(mvals) == PROBE,])
-  plot(BETAS, ADOS, main = HEADER, ylab = "ADOS", xlab = "Beta Value")
-  regl5 <- lm(ADOS ~ BETAS)
-  SLOPE=signif(regl5$coefficients[2],3)
-  abline(regl5)
-  mycor <- cor.test(ADOS, BETAS, method = "pearson")
-  mycor_stat <- signif(mycor$estimate,3)
-  mycor_p <- signif(mycor$p.value,3)
-  SUBHEAD <- paste("R=",mycor_stat," p=",mycor_p," slope=",SLOPE, sep="")
-  mtext(SUBHEAD,cex=0.6)
-
-}
-
 par(mfrow=c(3,3))
-
 sapply(TOPPROBES,effect_plot)
 
 pdf("effect_guthrie.pdf")
