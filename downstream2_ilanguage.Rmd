@@ -1,5 +1,5 @@
 ---
-title: "Correlates of ADOS and methylation - enrichment analysis"
+title: "Correlates of inverse IQ and methylation - enrichment analysis"
 author: "Mark Ziemann"
 date: "`r Sys.Date()`"
 output:
@@ -20,9 +20,9 @@ Here I will be running a comparison of differential methylation data from guthri
 
 Here are the files that I'm using:
 
-* limma_blood_ADOS.csv
+* limma_blood_ilanguage.csv
 
-* limma_guthrie_ADOS.csv
+* limma_guthrie_ilanguage.csv
 
 ```{r,libs}
 
@@ -54,12 +54,11 @@ source("meth_functions.R")
 bl_mvals <- readRDS(file="bl_mvals.rds")
 gu_mvals <- readRDS(file="gu_mvals.rds")
 
-bl_design <- readRDS(file="bl_design_ados.rds")
-gu_design <- readRDS(file="gu_design_ados.rds")
+bl_design <- readRDS(file="bl_design_ilanguage.rds")
+gu_design <- readRDS(file="gu_design_ilanguage.rds")
 
-bl_lim <- read.csv("limma_blood_ADOS.csv")
-gu_lim <- read.csv("limma_guthrie_ADOS.csv")
-
+bl_lim <- read.csv("limma_blood_ilanguage.csv")
+gu_lim <- read.csv("limma_guthrie_ilanguage.csv")
 
 ```
 
@@ -110,7 +109,7 @@ par(mfrow=c(2,1))
 hist(res_bl_top$t,xlab="probe t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
 hist(res_bl_df$median,xlab="gene median t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
 
-pdf("hist_bl_ados.pdf")
+pdf("hist_bl_ilanguage.pdf")
 par(mfrow=c(2,1))
 hist(res_bl_top$t,xlab="probe t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
 plot(1)
@@ -150,7 +149,7 @@ par(mfrow=c(2,1))
 hist(res_gu_top$t,xlab="probe t-stat",main="neonatal Guthrie card") ; grid() ; abline(v=0,lty=1,lwd=3)
 hist(res_gu_df$median,xlab="gene median t-stat",main="neonatal Guthrie card") ; grid() ; abline(v=0,lty=1,lwd=3)
 
-pdf("hist_gu_ados.pdf")
+pdf("hist_gu_ilanguage.pdf")
 par(mfrow=c(2,1))
 hist(res_gu_top$t,xlab="probe t-stat",main="neonatal Guthrie card") ; grid() ; abline(v=0,lty=1,lwd=3)
 plot(1)
@@ -213,7 +212,7 @@ rnk <- rm3
             ylab = Y_AXIS)
         })
 
-pdf("genedens_ados.pdf")
+pdf("genedens_ilanguage.pdf")
 par(mfrow=c(2,2))
 plot(1)
 plot(1)
@@ -317,7 +316,7 @@ m2 <- m[,c("bl","gu")]
 m2[is.na(m2)] <- 0
 res <- mitch_calc(m2, genesets, priority="effect")
 mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
-mitch_plots(res=res,outfile="blgu_mitch_ados.pdf")
+mitch_plots(res=res,outfile="blgu_mitch_ilanguage.pdf")
 sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
 
 head(sig[order(-abs(sig$s.dist)),],30) %>%
@@ -437,7 +436,7 @@ points(sigy$median.x,sigy$median.y,col="blue",pch=1,cex=log10(sigy$NGenes.x))
 abline(v=0,h=0,lty=2,lwd=3)
 
 par(mfrow=c(1,1))
-pdf("camera_pw_ados.pdf")
+pdf("camera_pw_ilanguage.pdf")
 
 plot(m4$median.x,m4$median.y,col="gray",pch=19,cex=log10(m4$NGenes.x),
   xlab="blood",ylab="Guthrie",main="median t-stat")
@@ -469,7 +468,7 @@ text(res$detailed_sets[[1]],labels=rownames(res$detailed_sets[[1]]))
 mtext(names(res$detailed_sets)[[1]])
 grid() ; abline(v=0,h=0,lty=2,lwd=3)
 
-pdf("c3_metabotropic_ados.pdf")
+pdf("c3_metabotropic_ilanguage.pdf")
 
 plot(res$detailed_sets[[1]], pch=19,cex=2,col="lightgray",
   xlim=c(XMIN,XMAX),ylim=c(YMIN,YMAX), 
@@ -483,39 +482,6 @@ dev.off()
 
 ```
 
-Make heatmap of top set.
-
-
-```{r,topsetheat1}
-
-topset<- rownames(res$detailed_sets[[1]])
-probes <- unlist(sets[which(names(sets) %in% topset)])
-topm <- bl_mvals[which(rownames(bl_mvals) %in% probes),]
-
-colfunc <- colorRampPalette(c("yellow", "red"))
-col_pal <- colfunc(length(min(bl_design[,ncol(bl_design)]):max(bl_design[,ncol(bl_design)])))
-mycols <- col_pal[bl_design[,ncol(bl_design)]]
-
-colfunc2 <- colorRampPalette(c("blue", "white", "red"))
-
-heatmap.2(topm,scale="row",trace="none",ColSideColors=mycols,col=colfunc2(25),
-  main="C/3 receptor methylation in blood")
-
-topset<- rownames(res$detailed_sets[[1]])
-probes <- unlist(sets[which(names(sets) %in% topset)])
-topm <- gu_mvals[which(rownames(gu_mvals) %in% probes),]
-
-colfunc <- colorRampPalette(c("yellow", "red"))
-col_pal <- colfunc(length(min(gu_design[,ncol(gu_design)]):max(gu_design[,ncol(gu_design)])))
-mycols <- col_pal[gu_design[,ncol(gu_design)]]
-
-colfunc2 <- colorRampPalette(c("blue", "white", "red"))
-
-heatmap.2(topm,scale="row",trace="none",ColSideColors=mycols,col=colfunc2(25),
-  main="C/3 receptor methylation in Guthrie cards")
-
-```
-
 ## Distinguishing ASD from birth
 
 Here I will use MDS plot to cluster samples.
@@ -526,17 +492,17 @@ First I will use all probes, then I will focus on a subset of candidate probes.
 
 plot(cmdscale(dist(t(bl_mvals))), xlab="Coordinate 1", ylab="Coordinate 2",
   type = "n",main="Blood")
-mtext("Numbers indicate ADOS score")
+mtext("Numbers indicate ilanguage score")
 text(cmdscale(dist(t(bl_mvals))), labels=bl_design[,ncol(bl_design)], )
 
 plot(cmdscale(dist(t(gu_mvals))), xlab="Coordinate 1", ylab="Coordinate 2", 
   type = "n",main="Guthrie card")
-mtext("Numbers indicate ADOS score")
+mtext("Numbers indicate ilanguage score")
 text(cmdscale(dist(t(gu_mvals))), labels=gu_design[,ncol(gu_design)], )
 
 ```
 
-There is no apparent clustering by ADOS score, indicating a subtle effect.
+There is no apparent clustering by ilanguage score, indicating a subtle effect.
 
 Now I will examine the probes associated with the pathway of interest.
 
@@ -556,7 +522,7 @@ text(cmdscale(dist(t(myprobedat))), labels=gu_design[,ncol(gu_design)], )
 
 ```
 
-Again, there is no apparent clustering by ADOS score.
+Again, there is no apparent clustering by ilanguage score.
 This indicates that the top probes cannot be used diagnostically.
 
 ```{r,mds3}
@@ -583,7 +549,7 @@ bl_design2 <- bl_design[,c(1,10)]
 fit <- lmFit(bl_mvals, bl_design2)
 fit <- eBayes(fit)
 summary(decideTests(fit))
-top <- topTable(fit,coef="ADOS",num=Inf, sort.by = "P")
+top <- topTable(fit,coef="ilanguage",num=Inf, sort.by = "P")
 head(top)
 myprobes3 <- rownames(top)[1:20]
 
@@ -600,7 +566,7 @@ gu_design2 <- gu_design[,c(1,12)]
 fit <- lmFit(gu_mvals, gu_design2)
 fit <- eBayes(fit)
 summary(decideTests(fit))
-top <- topTable(fit,coef="ADOS",num=Inf, sort.by = "P")
+top <- topTable(fit,coef="ilanguage",num=Inf, sort.by = "P")
 head(top)
 myprobes3 <- rownames(top)[1:20]
 
@@ -635,7 +601,7 @@ subsets <- mclapply(mapEIDto850k.lv,intersect,rownames(data.m),mc.cores = 16)
 nrep.v <- unlist(lapply(subsets,length))
 selG.idx <- which(nrep.v>0)
 
-gt.o <- gt(response=bl_design[,"ADOS"], alternative=t(data.m), model="linear",
+gt.o <- gt(response=bl_design[,ncol(bl_design)], alternative=t(data.m), model="linear",
   directional = TRUE, standardize = FALSE, permutations = 0,
   subsets=subsets[selG.idx],trace=F)
 
@@ -644,7 +610,7 @@ gt_res <- gt_res[order(gt_res$`p-value`),]
 
 ```
 
-## Gene set level enrichment - ADOS
+## Gene set level enrichment - ilanguage
 
 ```{r,genesets2}
 
@@ -655,7 +621,7 @@ cores = 8
 
 Aggregate mval to genes and examine pathway enrichment in blood and guthries.
 
-```{r,gsmea_ados}
+```{r,gsmea}
 
 tic()
 bl_gsmea <- gsmea(mval=bl_mvals,design=bl_design,probesets=sets,genesets=genesets,cores=8)
