@@ -120,7 +120,9 @@ dev.off()
 
 Looking for enrichments in different genomic compartments.
 
-```{r,comp1}
+Guthrie cards.
+
+```{r,comp1a}
 
 par(mfrow=c(2,1))
 
@@ -133,6 +135,12 @@ comp
 make_forest_plots_up(comp)
 make_forest_plots_dn(comp)
 }
+
+```
+
+Blood at assessment.
+
+```{r,comp1b}
 
 # blood
 dma2 <- read.csv("limma_blood_ADOS.csv")
@@ -148,7 +156,9 @@ make_forest_plots_dn(comp)
 
 ## Compartments top 1000
 
-```{r,comp2}
+Guthrie cards.
+
+```{r,comp2a}
 
 par(mfrow=c(2,1))
 # guthrie
@@ -157,6 +167,11 @@ comp <- lapply(comp,function(x) {subset(x,OR!=0)} )
 comp
 make_forest_plots_up(comp)
 make_forest_plots_dn(comp)
+
+```
+Blood at assessment.
+
+```{r,comp2b}
 
 # blood
 comp <- compartment_enrichment2(dma2)
@@ -169,7 +184,9 @@ make_forest_plots_dn(comp)
 
 ## Looking for enrichments in proximity to CGI contexts
 
-```{r,cgi1}
+Guthrie cards.
+
+```{r,cgi1a}
 
 par(mfrow=c(2,1))
 
@@ -181,6 +198,12 @@ comp
 make_forest_plots_up(comp)
 make_forest_plots_dn(comp)
 }
+
+```
+
+Blood at assessment.
+
+```{r,cgi1b}
 
 if (nrow(subset(dma2,P.Value <1e-4)) > 100 ) {
 # blood
@@ -195,8 +218,9 @@ make_forest_plots_dn(comp)
 
 ## CGI enrichments in top 1000 probes
 
+Guthrie cards.
 
-```{r,cgi2}
+```{r,cgi2a}
 
 par(mfrow=c(2,1))
 # guthrie
@@ -206,6 +230,11 @@ comp
 make_forest_plots_up(comp)
 make_forest_plots_dn(comp)
 
+```
+
+Blood at assessment.
+
+```{r,cgi2b}
 # blood
 comp <- cgi_enrichment2(dma2)
 comp <- lapply(comp,function(x) {subset(x,OR!=0)} )
