@@ -169,6 +169,7 @@ make_forest_plots_up(comp)
 make_forest_plots_dn(comp)
 
 ```
+
 Blood at assessment.
 
 ```{r,comp2b}
