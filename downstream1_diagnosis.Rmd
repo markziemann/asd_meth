@@ -1,5 +1,5 @@
 ---
-title: "Correlates of ADOS and methylation - compartment analysis"
+title: "Correlates of diagnosis and methylation - compartment analysis"
 author: "Mark Ziemann"
 date: "`r Sys.Date()`"
 output:
@@ -20,9 +20,9 @@ Here I will be running a comparison of differential methylation data from guthri
 
 Here are the files that I'm using:
 
-* limma_guthrie_ADOS.csv
+* limma_guthrie_diagnosis.csv
 
-* limma_blood_ADOS.csv
+* limma_blood_diagnosis.csv
 
 ```{r,libs}
 
@@ -48,14 +48,10 @@ source("meth_functions.R")
 
 First I will generate plots for limmma analysis.
 
-* limma_guthrie_ADOS.csv
-
-* limma_blood_ADOS.csv
-
 ```{r,manhattan1}
 
 # blood at assessment
-top <- read.csv("limma_blood_ADOS.csv")
+top <- read.csv("limma_blood_diagnosis.csv")
 nrow(top)
 top <- subset(top,P.Value<1e-2)
 nrow(top)
@@ -66,24 +62,25 @@ top$snp <- sapply(strsplit(top$snp,";"),"[[",1)
 up <- subset(top,logFC>0)
 dn <- subset(top,logFC<0)
 
-par(mfrow=c(2,1))
-par(mar=c(4,4,3,5))
-manhattan(x=up,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
-  ylim=c(2,6), annotatePval= 1e-04 ,main="Blood at assessment limma hypermethylated")
-manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
-  ylim=c(2,6), annotatePval= 1e-04 , main="Blood at assessment limma hypomethylated")
-
-pdf("manhat_limma_bl.pdf")
-par(mfrow=c(2,1))
-par(mar=c(4,4,3,5))
-manhattan(x=up,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
-  ylim=c(2,6), annotatePval= 1e-04 ,main="Blood at assessment limma hypermethylated")
-manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
-  ylim=c(2,6), annotatePval= 1e-04 , main="Blood at assessment limma hypomethylated")
-dev.off()
+if ( (head(up$P.Value,1) < 1e-4) & (head(dn$P.Value,1) < 1e-4 ) ) {
+  par(mfrow=c(2,1))
+  par(mar=c(4,4,3,5))
+  manhattan(x=up,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
+    ylim=c(2,6), annotatePval= 1e-04 ,main="Blood at assessment limma hypermethylated")
+  manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
+    ylim=c(2,6), annotatePval= 1e-04 , main="Blood at assessment limma hypomethylated")
+  pdf("manhat_limma_bl.pdf")
+  par(mfrow=c(2,1))
+  par(mar=c(4,4,3,5))
+  manhattan(x=up,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
+    ylim=c(2,6), annotatePval= 1e-04 ,main="Blood at assessment limma hypermethylated")
+  manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
+    ylim=c(2,6), annotatePval= 1e-04 , main="Blood at assessment limma hypomethylated")
+  dev.off()
+}
 
 # neonatal guthrie card
-top <- read.csv("limma_guthrie_ADOS.csv")
+top <- read.csv("limma_guthrie_diagnosis.csv")
 nrow(top)
 top <- subset(top,P.Value<1e-2)
 nrow(top)
@@ -94,25 +91,26 @@ top$snp <- sapply(strsplit(top$snp,";"),"[[",1)
 up <- subset(top,logFC>0)
 dn <- subset(top,logFC<0)
 
-par(mfrow=c(2,1))
-par(mar=c(4,4,3,5))
-manhattan(x=up,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
-  ylim=c(2,6), annotatePval= 1e-04 ,main="Neonatal Guthrie card limma hypermethylated",
-  annotateTop=FALSE)
-manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
-  ylim=c(2,6), annotatePval= 1e-04 , main="Neonatal Guthrie card limma hypomethylated",
-  annotateTop=FALSE)
-
-pdf("manhat_limma_gu.pdf")
-par(mfrow=c(2,1))
-par(mar=c(4,4,3,5))
-manhattan(x=up,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
-  ylim=c(2,6), annotatePval= 1e-04 ,main="Neonatal Guthrie card limma hypermethylated",
-  annotateTop=FALSE)
-manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
-  ylim=c(2,6), annotatePval= 1e-04 , main="Neonatal Guthrie card limma hypomethylated",
-  annotateTop=FALSE)
-dev.off()
+if ( (head(up$P.Value,1) < 1e-4) & (head(dn$P.Value,1) < 1e-4 ) ) {
+  par(mfrow=c(2,1))
+  par(mar=c(4,4,3,5))
+  manhattan(x=up,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
+    ylim=c(2,6), annotatePval= 1e-04 ,main="Neonatal Guthrie card limma hypermethylated",
+    annotateTop=FALSE)
+  manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
+    ylim=c(2,6), annotatePval= 1e-04 , main="Neonatal Guthrie card limma hypomethylated",
+    annotateTop=FALSE)
+  pdf("manhat_limma_gu.pdf")
+  par(mfrow=c(2,1))
+  par(mar=c(4,4,3,5))
+  manhattan(x=up,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
+    ylim=c(2,6), annotatePval= 1e-04 ,main="Neonatal Guthrie card limma hypermethylated",
+    annotateTop=FALSE)
+  manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(1e-04),
+    ylim=c(2,6), annotatePval= 1e-04 , main="Neonatal Guthrie card limma hypomethylated",
+    annotateTop=FALSE)
+  dev.off()
+}
 
 ```
 
@@ -125,7 +123,7 @@ Looking for enrichments in different genomic compartments.
 par(mfrow=c(2,1))
 
 # guthrie
-dma1 <- read.csv("limma_guthrie_ADOS.csv")
+dma1 <- read.csv("limma_guthrie_diagnosis.csv")
 if (nrow(subset(dma1,P.Value <1e-4)) > 100 ) {
 comp <- compartment_enrichment(dma1)
 comp <- lapply(comp,function(x) {subset(x,OR!=0)} )
@@ -135,7 +133,7 @@ make_forest_plots_dn(comp)
 }
 
 # blood
-dma2 <- read.csv("limma_blood_ADOS.csv")
+dma2 <- read.csv("limma_blood_diagnosis.csv")
 if (nrow(subset(dma2,P.Value <1e-4)) > 100 ) {
 comp <- compartment_enrichment(dma2)
 comp <- lapply(comp,function(x) {subset(x,OR!=0)} )

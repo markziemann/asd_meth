@@ -238,7 +238,7 @@ cgi_enrichment2 <- function(dma) {
 }
 
 # make a forest plot from the enrichment data
-make_forest_plots <- function(comp) {
+make_forest_plots_up <- function(comp) {
 
   comp_data <- 
     structure(list(
@@ -254,6 +254,9 @@ make_forest_plots <- function(comp) {
   forestplot(comp_data,title = "hypermethylated",
     labeltext = as.list(rownames(comp_data)),
     mean=mean,lower=lower,upper=upper)
+}
+
+make_forest_plots_dn <- function(comp) {
 
 comp_data <- 
   structure(list(

@@ -1,5 +1,5 @@
 ---
-title: "Correlates of ADOS and methylation - compartment analysis"
+title: "Correlates of SRS and methylation - compartment analysis"
 author: "Mark Ziemann"
 date: "`r Sys.Date()`"
 output:
@@ -20,9 +20,9 @@ Here I will be running a comparison of differential methylation data from guthri
 
 Here are the files that I'm using:
 
-* limma_guthrie_ADOS.csv
+* limma_guthrie_SRS.csv
 
-* limma_blood_ADOS.csv
+* limma_blood_SRS.csv
 
 ```{r,libs}
 
@@ -48,14 +48,10 @@ source("meth_functions.R")
 
 First I will generate plots for limmma analysis.
 
-* limma_guthrie_ADOS.csv
-
-* limma_blood_ADOS.csv
-
 ```{r,manhattan1}
 
 # blood at assessment
-top <- read.csv("limma_blood_ADOS.csv")
+top <- read.csv("limma_blood_SRS.csv")
 nrow(top)
 top <- subset(top,P.Value<1e-2)
 nrow(top)
@@ -83,7 +79,7 @@ manhattan(x=dn,chr="chr",bp="pos",p="P.Value",snp="snp",suggestiveline = -log10(
 dev.off()
 
 # neonatal guthrie card
-top <- read.csv("limma_guthrie_ADOS.csv")
+top <- read.csv("limma_guthrie_SRS.csv")
 nrow(top)
 top <- subset(top,P.Value<1e-2)
 nrow(top)
@@ -125,7 +121,7 @@ Looking for enrichments in different genomic compartments.
 par(mfrow=c(2,1))
 
 # guthrie
-dma1 <- read.csv("limma_guthrie_ADOS.csv")
+dma1 <- read.csv("limma_guthrie_SRS.csv")
 if (nrow(subset(dma1,P.Value <1e-4)) > 100 ) {
 comp <- compartment_enrichment(dma1)
 comp <- lapply(comp,function(x) {subset(x,OR!=0)} )
@@ -135,7 +131,7 @@ make_forest_plots_dn(comp)
 }
 
 # blood
-dma2 <- read.csv("limma_blood_ADOS.csv")
+dma2 <- read.csv("limma_blood_SRS.csv")
 if (nrow(subset(dma2,P.Value <1e-4)) > 100 ) {
 comp <- compartment_enrichment(dma2)
 comp <- lapply(comp,function(x) {subset(x,OR!=0)} )
