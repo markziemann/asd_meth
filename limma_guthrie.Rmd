@@ -466,6 +466,32 @@ write.csv(bDat,file="ASD_guthrie_beta_onADOS_withintw_Nov27.csv",row.names=TRUE)
 
 ```
 
+## Genome wide average methylation
+
+```{r,gwam}
+
+gwam <- colMeans(bDat)
+
+message("GWAM assocation with ADOS")
+summary(lm(gwam~ADOS))
+
+message("GWAM assocation with SRS")
+summary(lm(gwam~SRS))
+
+message("GWAM assocation with motor impairment")
+summary(lm(gwam~motor))
+
+message("GWAM assocation with diagnosis")
+summary(lm(gwam~diagnosis))
+
+message("GWAM assocation with iIQ")
+summary(lm(gwam~iiq))
+
+message("GWAM assocation with ilanguage")
+summary(lm(gwam~ilanguage))
+
+```
+
 ## Plotting effect sizes of top DMPs
 
 ```{r,effect1}
