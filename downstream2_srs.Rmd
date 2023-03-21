@@ -549,7 +549,7 @@ bl_design2 <- bl_design[,c(1,10)]
 fit <- lmFit(bl_mvals, bl_design2)
 fit <- eBayes(fit)
 summary(decideTests(fit))
-top <- topTable(fit,coef="srs",num=Inf, sort.by = "P")
+top <- topTable(fit,coef="SRS",num=Inf, sort.by = "P")
 head(top)
 myprobes3 <- rownames(top)[1:20]
 
@@ -566,7 +566,7 @@ gu_design2 <- gu_design[,c(1,12)]
 fit <- lmFit(gu_mvals, gu_design2)
 fit <- eBayes(fit)
 summary(decideTests(fit))
-top <- topTable(fit,coef="srs",num=Inf, sort.by = "P")
+top <- topTable(fit,coef="SRS",num=Inf, sort.by = "P")
 head(top)
 myprobes3 <- rownames(top)[1:20]
 

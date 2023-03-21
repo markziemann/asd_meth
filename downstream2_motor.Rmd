@@ -364,28 +364,6 @@ cres_bl <- cres
 
 ```
 
-Now drilling down to the top set.
-
-```{r,cam_bl_topset}
-
-myset <- rownames(head(sig[order(-abs(sig$median)),],1))
-myset_members <- genesets[[which(names(genesets) == myset)]]
-mystats <- stat[which(names(stat) %in% myset_members)]
-myl <- list("allgenes"=stat,myset=mystats)
-boxplot(myl,cex=0)
-library(vioplot)
-vioplot(myl,main=myset)
-mygenes <- head(mystats[order(mystats)],5)
-mygenes
-myprobes <- unique(unlist(sets[which(names(sets) %in% names(mygenes))]))
-myprobedat <- res_bl_top[which(rownames(res_bl_top) %in% myprobes),]
-
-myprobedat %>%
-  kbl(caption = "Probe data for top 5 genes") %>%
-  kable_paper("hover", full_width = F)
-
-```
-
 Guthrie dataset.
 
 ```{r,cam_guth}
@@ -504,27 +482,6 @@ text(cmdscale(dist(t(gu_mvals))), labels=gu_design[,ncol(gu_design)], )
 ```
 
 There is no apparent clustering by motor impairment score, indicating a subtle effect.
-
-Now I will examine the probes associated with the pathway of interest.
-
-```{r,mds2}
-
-myprobes
-
-myprobedat <- bl_mvals[which(rownames(bl_mvals) %in% myprobes),]
-plot(cmdscale(dist(t(myprobedat))), xlab="Coordinate 1", ylab="Coordinate 2",
-  type = "n",main="Blood")
-text(cmdscale(dist(t(myprobedat))), labels=bl_design[,ncol(bl_design)], )
-
-myprobedat <- gu_mvals[which(rownames(gu_mvals) %in% myprobes),]
-plot(cmdscale(dist(t(myprobedat))), xlab="Coordinate 1", ylab="Coordinate 2",
-  type = "n",main="Guthrie card")
-text(cmdscale(dist(t(myprobedat))), labels=gu_design[,ncol(gu_design)], )
-
-```
-
-Again, there is no apparent clustering by motor impairment score.
-This indicates that the top probes cannot be used diagnostically.
 
 ```{r,mds3}
 
