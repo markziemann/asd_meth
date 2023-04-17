@@ -42,6 +42,7 @@ suppressPackageStartupMessages({
   library("FlowSorted.Blood.EPIC")
   library("mitch")
   library("kableExtra")
+  library("vioplot")
 })
 
 source("meth_functions.R")
@@ -216,6 +217,13 @@ gmset <- gmset[noXreact,]
 #Removing probes on X and Y chromosomes
 autosomes <- !(featureNames(gmset) %in% ann$Name[ann$chr %in% c("chrX","chrY")])
 gmset_flt <- gmset[autosomes,]
+
+#getBeta
+beta = getM(gmset_flt)
+saveRDS(beta,"gu_beta.rds")
+df <- data.frame(t(t(colMeans(beta))))
+colnames(df) = "gwam_gu"
+write.table(df,file="gu_gwam.tsv")
 
 #Relative log expression (RLE plot)
 mvals = getM(gmset_flt)
@@ -461,7 +469,7 @@ saveRDS(design_tw, "gu_design_ilanguage.rds")
 
 bDat = ilogit2(mvals)
 bDat_new = getBeta(gmset_flt)
-#View(bDat)
+#View(bDat)c
 write.csv(bDat,file="ASD_guthrie_beta_onADOS_withintw_Nov27.csv",row.names=TRUE)
 
 ```
@@ -470,25 +478,55 @@ write.csv(bDat,file="ASD_guthrie_beta_onADOS_withintw_Nov27.csv",row.names=TRUE)
 
 ```{r,gwam}
 
-gwam <- colMeans(bDat)
+vioplot(bDat)
+
+#gwam <- colMeans(bDat)
+gwam <- apply(bDat,2,median)
 
 message("GWAM assocation with ADOS")
-summary(lm(gwam~ADOS))
+mylm <- lm(gwam~ADOS)
+summary(mylm)
+summary(lm(gwam ~ Twin_Group + ADOS ))
 
 message("GWAM assocation with SRS")
-summary(lm(gwam~SRS))
+mylm <- lm(gwam~SRS)
+summary(mylm)
+plot(gwam~SRS)
+abline(mylm)
+summary(lm(gwam ~ Twin_Group + SRS ))
 
 message("GWAM assocation with motor impairment")
-summary(lm(gwam~motor))
+mylm <- lm(gwam~motor)
+summary(mylm)
+summary(lm(gwam ~ Twin_Group + motor ))
 
 message("GWAM assocation with diagnosis")
-summary(lm(gwam~diagnosis))
+mylm <- lm(gwam~diagnosis)
+summary(mylm)
+summary(lm(gwam ~ Twin_Group + diagnosis ))
 
 message("GWAM assocation with iIQ")
-summary(lm(gwam~iiq))
+mylm <- lm(gwam~iiq)
+summary(mylm)
+plot(gwam~iiq)
+abline(mylm)
+summary(lm(gwam ~ Twin_Group + iiq ))
 
 message("GWAM assocation with ilanguage")
-summary(lm(gwam~ilanguage))
+mylm <- lm(gwam~ilanguage)
+summary(mylm)
+plot(gwam~ilanguage)
+abline(mylm)
+summary(lm(gwam ~ Twin_Group + ilanguage ))
+
+probes_body <- rownames(ann_sub[grep("Body",ann_sub$UCSC_RefGene_Group),])
+bDat_body <- bDat[which(rownames(bDat) %in% probes_body),]
+gwam <- apply(bDat_body,2,median)
+
+probes_body <- rownames(ann_sub[grep("Shelf",ann_sub$Relation_to_Island),])
+bDat_body <- bDat[which(rownames(bDat) %in% probes_body),]
+gwam <- apply(bDat_body,2,median)
+
 
 ```
 
