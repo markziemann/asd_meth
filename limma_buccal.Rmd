@@ -262,6 +262,9 @@ legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
 
 ```{r,pca1}
 
+mvals <- mvals[apply(mvals,1,sd)!=0,]
+mvals <- mvals[which(!is.na(rowSums(mvals))),]
+
 fit <- prcomp(t(mvals),center = TRUE, scale = TRUE,retx=TRUE)
 loadings = fit$x
 plot(fit,type="lines")
@@ -271,15 +274,15 @@ datTraits = targets_gen[,7:15]
 moduleTraitCor = cor(loadings[,1:6], datTraits, use = "p")
 moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
 par(cex=0.75, mar = c(6, 8.5, 3, 3))
-textMatrix = paste(signif(moduleTraitCor, 2), "\n(", 
+textMatrix = paste(signif(moduleTraitCor, 2), "\n(",
   signif(moduleTraitPvalue, 1), ")", sep = "");
 dim(textMatrix) = dim(moduleTraitCor)
 
-labeledHeatmap(Matrix = t(moduleTraitCor), 
+labeledHeatmap(Matrix = t(moduleTraitCor),
   xLabels = colnames(loadings)[1:ncol(t(moduleTraitCor))],
   yLabels = names(datTraits), colorLabels = FALSE, colors = blueWhiteRed(6),
   textMatrix = t(textMatrix), setStdMargins = FALSE, cex.text = 0.5,
-  cex.lab.y = 0.6, zlim = c(-1,1), 
+  cex.lab.y = 0.6, zlim = c(-1,1),
   main = paste("PCA-trait relationships: Top principal components"))
 
 pdf("pca_buccal.pdf")
