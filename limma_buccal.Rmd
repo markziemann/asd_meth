@@ -1,0 +1,629 @@
+---
+title: "Autism Spectrum Disorder Methylation analysis - buccal swab analysis"
+author: "Namitha Mohandras, Mark Ziemann"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    fig_width: 7
+    fig_height: 7
+theme: cosmo
+---
+
+Source: https://github.com/markziemann/asd_meth
+
+## Introduction
+
+Here we are analysing buccal swab methylation in 6 twin pairs.
+
+```{r, packages}
+
+baseDir=getwd()
+dataDir=paste(baseDir,"/cp_asd_data",sep="")
+
+suppressPackageStartupMessages({
+  library("missMethyl")
+  library("limma")
+  library("minfi")
+  library("IlluminaHumanMethylation450kanno.ilmn12.hg19")
+  library("IlluminaHumanMethylationEPICanno.ilm10b2.hg19")
+  library("ruv")
+  library("RColorBrewer")
+  library("matrixStats")
+  library("gplots")
+  library("WGCNA")
+  library("FlowSorted.Blood.450k")
+  library("reshape2")
+  library("ggplot2")
+  library("missMethyl")
+  library("DMRcate")
+  library("FlowSorted.Blood.EPIC")
+  library("mitch")
+  library("kableExtra")
+  library("vioplot")
+})
+
+source("meth_functions.R")
+
+```
+
+## Load data
+
+Load the annotation data and the Epic methylation data.
+
+This analysis is to be conducted on Ubuntu with R4.
+
+```{r,load_data1}
+
+ann = getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
+
+ann_sub = ann[,c("chr","pos","strand","Name","Islands_Name",
+    "Relation_to_Island","UCSC_RefGene_Name","UCSC_RefGene_Group")]
+
+targets_gen = read.metharray.sheet(dataDir, pattern = "ILMLEPIC-16276_SampleSheet.csv")
+targets_gen <- targets_gen[grep("ASD",targets_gen$Sample_Name),]
+
+# Remove 204375410103_R07C01 because it is corrupted
+targets_gen <- targets_gen[grep("204375410103_R07C01",targets_gen$Basename, invert=TRUE),]
+
+# Remove 204375410103_R08C01 beacuse its twin is missing
+targets_gen <- targets_gen[grep("204375410103_R08C01",targets_gen$Basename, invert=TRUE),]
+
+#targets$ID = paste(targets$Sample_Group,targets_gen$Sample_Name,sep=".")
+rgSet = read.metharray.exp(targets = targets_gen)
+sampleNames(rgSet) = targets_gen$SampleID
+
+# patient data
+ss <- read.table("ASD_EPIC_DATA/ASD_guthrie_blood_combined_summarysheet.csv",sep=",",header=TRUE)
+ss <- ss[grep("G",ss$Sample_Name),]
+ss$Sample_Name <- gsub("\\.","_",ss$Sample_Name)
+ss$Sample_Name <- gsub("_G","",ss$Sample_Name)
+ss <- ss[ss$Sample_Name %in% targets_gen$Sample_Name,]
+
+ss$Sample_Name
+targets_gen$Sample_Name
+
+targets_gen <- ss
+
+colnames(rgSet) <- targets_gen$Sample_Name
+
+```
+
+## Testing MZ status
+
+```{r,snptest}
+
+snpBetas = getSnpBeta(rgSet)
+d = dist(t(snpBetas))
+hr = hclust(d, method = "complete", members=NULL)
+plot(hr)
+
+```
+
+## Quality control
+
+```{r,qc1}
+
+detP = detectionP(rgSet)
+qcReport(rgSet, sampNames = targets_gen$Sample_Name,
+  pdf="qc-report_ASD_buccal_nov27.pdf")
+cols=brewer.pal(4,"Set1")
+
+barplot(apply(detP,2,mean),
+  col=as.numeric(factor(targets_gen$Sample_Name)),
+  las=2,cex.names= 0.8, cex.axis=0.75,
+  main="Mean detection p-values of probe signals",
+  ylab="Mean detection p-value")
+
+barplot(apply(detP,2,mean),
+  col=as.numeric(factor(targets_gen$Sample_Name)),
+  las=2,cex.names= 0.8, cex.axis=0.75,ylim=c(0,0.010),
+  main="Mean detection p-values of probe signals",
+  ylab="Mean detection p-value")
+
+```
+
+## Preprocessing
+
+```{r,preprocess1}
+
+mset = preprocessRaw(rgSet)
+
+```
+
+## Data exploration
+
+Using Multi-dimensional scaling (MDS) plots before filtering.
+
+```{r,mds1}
+
+mdsPlot(mset, sampGroups = targets_gen$Sample_Name,
+  sampNames=targets_gen$Social_interaction_on_ADOS,legendPos="bottom")
+
+mdsPlot(mset, sampGroups = targets_gen$Sex,
+  sampNames=targets_gen$SampleID,legendPos="bottom")
+
+```
+
+## Cell type composition analysis
+
+Buccal swabs contain epithelial and leucocytes.
+Get the abundance of neutrophils as a proxy marker.
+
+```{r,celltypes}
+
+#cellCounts_new <- estimateCellCounts(rgSet, compositeCellType = "Blood",
+#  processMethod = "auto", probeSelect = "auto",
+#  cellTypes = c("CD8T","CD4T", "NK","Bcell","Mono","Gran"),
+#  referencePlatform = c("IlluminaHumanMethylation450k"),
+#  returnAll = FALSE, meanPlot = TRUE)
+
+cells <- estimateCellCounts2(rgSet,
+  referencePlatform= "IlluminaHumanMethylationEPIC",
+  returnAll = TRUE)
+
+cells$prop
+
+```
+
+## Filtering
+
+Remove samples with more than 5% of probes with detection p-values greater than 0.01.
+
+None of the p-values are less than 0.05.
+
+Now filter for high detection p-value and overlap with SNP.
+
+Need to get a copy of the Xreact probes from Namitha.
+In the mean time I have downloaded from github - link below.
+
+```{r,filt1}
+
+detP <- detectionP(rgSet)
+
+keep_samples <- apply(detP,2, function(x) { length(which(x>0.01))/length(x) } ) < 0.05
+detP <- detP[,keep_samples]
+mset <- mset[,keep_samples]
+targets_gen <- targets_gen[keep_samples,]
+
+mset <- mset[rowMeans(detP) < 0.01,]
+gmset <- mapToGenome(mset)
+
+#remove SNPs
+gmset_flt = dropLociWithSnps(gmset, snps = c("CpG", "SBE"))
+
+#Removing cross-reactive probes
+XURL="https://raw.githubusercontent.com/sirselim/illumina450k_filtering/master/EPIC/13059_2016_1066_MOESM1_ESM.csv"
+Xreact <- read.csv(XURL)
+
+#Xreact = read.csv(file="/group/canc2/puumba/Data/InfiniumData/NamithaData/Rprojects/Autism/Analysis_Sept11/EPIC_850k_crossreactiveProbes.csv", stringsAsFactors=FALSE)
+#Xreact = read.csv(file="~/48639-non-specific-probes-Illumina450k.csv", stringsAsFactors=FALSE)
+noXreact <-  !(featureNames(gmset) %in% Xreact$X)
+
+gmset <- gmset[noXreact,]
+
+#Removing probes on X and Y chromosomes
+autosomes <- !(featureNames(gmset) %in% ann$Name[ann$chr %in% c("chrX","chrY")])
+gmset_flt <- gmset[autosomes,]
+
+#getBeta
+beta = getM(gmset_flt)
+saveRDS(beta,"buccal_beta.rds")
+df <- data.frame(t(t(colMeans(beta))))
+colnames(df) = "gwam_bu"
+write.table(df,file="buccal_gwam.tsv")
+
+#Relative log expression (RLE plot)
+mvals = getM(gmset_flt)
+medSq = apply(mvals, 1, median)
+YSq = mvals - medSq
+
+boxplot(YSq,outline=FALSE,ylim=c(-1.5,1.5),
+  ylab="Relative Log Methylation Value",
+  cols=as.character(factor(targets_gen$Social_interaction_on_ADOS,)) )
+
+```
+
+## MDS plots generation after filtering
+
+```{r,mds2}
+
+pal = brewer.pal(8, "Dark2")
+mds1Sq = plotMDS(mvals, top=1000, gene.selection="common",dim.plot=c(1,2))
+mds2Sq = plotMDS(mvals, top=1000, gene.selection="common",dim.plot=c(1,3))
+mds3Sq = plotMDS(mvals, top=1000, gene.selection="common",dim.plot=c(2,3))
+mds4Sq = plotMDS(mvals, top=1000, gene.selection="common",dim.plot=c(3,4))
+
+plotMDS(mds1Sq, xlab="Dimension 1", ylab="Dimension 2",
+  col=pal[as.factor(targets_gen$Diagnosis)],
+  dim=c(1,2), labels=targets_gen$Sample_Name)
+legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
+
+plotMDS(mds2Sq, xlab="Dimension 1", ylab="Dimension 3",
+  col=pal[as.factor(targets_gen$Diagnosis)],dim=c(1,3),
+  labels=targets_gen$Sample_Name)
+legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
+
+plotMDS(mds3Sq, xlab="Dimension 2", ylab="Dimension 3",
+  col=pal[as.factor(targets_gen$Diagnosis)],dim=c(2,3),
+  labels=targets_gen$Sample_Name)
+legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
+
+plotMDS(mds4Sq, xlab="Dimension 3", ylab="Dimension 4",
+  col=pal[as.factor(targets_gen$Diagnosis)],dim=c(3,4),
+  labels=targets_gen$Sample_Name)
+legend("bottomright",bg="white",col=pal,cex=.7,pch=1,legend=0:1)
+
+```
+
+## Principal Component Analysis (PCA)
+
+```{r,pca1}
+
+fit <- prcomp(t(mvals),center = TRUE, scale = TRUE,retx=TRUE)
+loadings = fit$x
+plot(fit,type="lines")
+nGenes = nrow(mvals)
+nSamples = ncol(mvals)
+datTraits = targets_gen[,7:15]
+moduleTraitCor = cor(loadings[,1:6], datTraits, use = "p")
+moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
+par(cex=0.75, mar = c(6, 8.5, 3, 3))
+textMatrix = paste(signif(moduleTraitCor, 2), "\n(", 
+  signif(moduleTraitPvalue, 1), ")", sep = "");
+dim(textMatrix) = dim(moduleTraitCor)
+
+labeledHeatmap(Matrix = t(moduleTraitCor), 
+  xLabels = colnames(loadings)[1:ncol(t(moduleTraitCor))],
+  yLabels = names(datTraits), colorLabels = FALSE, colors = blueWhiteRed(6),
+  textMatrix = t(textMatrix), setStdMargins = FALSE, cex.text = 0.5,
+  cex.lab.y = 0.6, zlim = c(-1,1), 
+  main = paste("PCA-trait relationships: Top principal components"))
+
+pdf("pca_buccal.pdf")
+
+par(mar=c(3,8,2,2))
+
+labeledHeatmap(Matrix = t(moduleTraitCor), 
+  xLabels = colnames(loadings)[1:ncol(t(moduleTraitCor))],
+  yLabels = names(datTraits), colorLabels = FALSE, colors = blueWhiteRed(6),
+  textMatrix = t(textMatrix), setStdMargins = FALSE, cex.text = 0.5,
+  cex.lab.y = 0.6, zlim = c(-1,1), 
+  main = paste("PCA-trait relationships: Top principal components"))
+
+dev.off()
+
+```
+
+## Regression analysis - within twin pair on ADOS
+
+ADOS is the outcome variable (continuous)
+
+```{r,reg1}
+
+Twin_Group <- factor(targets_gen$Family_ID)
+ADOS <- targets_gen$Social_interaction_on_ADOS
+names(ADOS) <- targets_gen$SampleID
+motor <- targets_gen$Motor_skills
+diagnosis <- targets_gen$Diagnosis
+SRS<- targets_gen$SRS_social_scores
+iiq <- 1/targets_gen$IQ
+# fix infinite
+iiq[iiq==Inf] <- 0.025
+iiq <- as.vector(scale(iiq))
+ilanguage <- as.vector(scale(1/targets_gen$language))
+
+#ADOS
+design_tw <- model.matrix(~ Twin_Group + ADOS )
+fit_tw <- lmFit(mvals, design_tw)
+fit2_tw <- eBayes(fit_tw)
+summary(decideTests(fit2_tw))
+top <- topTable(fit2_tw,coef="ADOS",num=Inf, sort.by = "P")
+nsig <- sum(top$adj.P.Val < 0.05)
+sum(top$P.Value< 0.05)
+output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
+output <- output[order(output$P.Value),]
+write.csv(output, file="limma_buccal_ADOS.csv",row.names=FALSE)
+output <- subset(output,P.Value<1e-4)
+head(output,30) %>% kbl() %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "buccal_design_ados.rds")
+saveRDS(mvals, "buccal_mvals.rds")
+
+```
+
+Other models:
+
+* motor skills impairment
+
+* diagnosis
+
+* SRS
+
+* inverse IQ
+
+* inverse langguage
+
+
+## Regression analysis - within twin pair on motor skills
+
+```{r,reg2}
+
+#motor:820,1.053055e-12
+design_tw <- model.matrix(~ Twin_Group + motor )
+fit_tw <- lmFit(mvals, design_tw)
+fit2_tw <- eBayes(fit_tw)
+summary(decideTests(fit2_tw))
+top <- topTable(fit2_tw,coef="motor",num=Inf, sort.by = "P")
+nsig <- sum(top$adj.P.Val < 0.05)
+sum(top$P.Value< 0.05)
+output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
+output <- output[order(output$P.Value),]
+write.csv(output,file="limma_buccal_motor.csv",row.names=FALSE)
+head(output,30) %>% kbl(caption="motor") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "buccal_design_motor.rds")
+
+```
+
+## Regression analysis - within twin pair on diagnosis
+
+```{r,reg3}
+#diagnosis:0,3.080605e-05
+design_tw <- model.matrix(~ Twin_Group + diagnosis )
+fit_tw <- lmFit(mvals, design_tw)
+fit2_tw <- eBayes(fit_tw)
+summary(decideTests(fit2_tw))
+top <- topTable(fit2_tw,coef="diagnosis",num=Inf, sort.by = "P")
+nsig <- sum(top$adj.P.Val < 0.05)
+sum(top$P.Value< 0.05)
+output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
+output <- output[order(output$P.Value),]
+write.csv(output,file="limma_buccal_diagnosis.csv",row.names=FALSE)
+head(output,30) %>% kbl(caption="diagnosis") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "buccal_design_diagnosis.rds")
+
+
+```
+
+## Regression analysis - within twin pair on SRS
+
+```{r,reg4}
+
+#SRS:0,1.895198e-07
+design_tw <- model.matrix(~ Twin_Group + SRS )
+fit_tw <- lmFit(mvals, design_tw)
+fit2_tw <- eBayes(fit_tw)
+summary(decideTests(fit2_tw))
+top <- topTable(fit2_tw,coef="SRS",num=Inf, sort.by = "P")
+head(top)
+nsig <- sum(top$adj.P.Val < 0.05)
+sum(top$P.Value< 0.05)
+output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
+output <- output[order(output$P.Value),]
+write.csv(output,file="limma_buccal_SRS.csv",row.names=FALSE)
+head(output,30) %>% kbl(caption="SRS score") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "buccal_design_srs.rds")
+
+```
+
+## Regression analysis - within twin pair on inverse IQ
+
+```{r,reg5}
+
+#iiq:0,1.326967e-05
+design_tw <- model.matrix(~ Twin_Group + iiq )
+fit_tw <- lmFit(mvals, design_tw)
+fit2_tw <- eBayes(fit_tw)
+summary(decideTests(fit2_tw))
+top <- topTable(fit2_tw,coef="iiq",num=Inf, sort.by = "P")
+head(top)
+nsig <- sum(top$adj.P.Val < 0.05)
+sum(top$P.Value< 0.05)
+output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
+output <- output[order(output$P.Value),]
+write.csv(output,file="limma_buccal_iIQ.csv",row.names=FALSE)
+head(output,30) %>% kbl(caption="inverse IQ") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "buccal_design_iiq.rds")
+
+```
+
+## Regression analysis - within twin pair on inverse language skills
+
+```{r,reg6}
+
+#ilanguage:0,9.149182e-08
+design_tw <- model.matrix(~ Twin_Group + ilanguage )
+fit_tw <- lmFit(mvals, design_tw)
+fit2_tw <- eBayes(fit_tw)
+summary(decideTests(fit2_tw))
+top <- topTable(fit2_tw,coef="ilanguage",num=Inf, sort.by = "P")
+head(top)
+nsig <- sum(top$adj.P.Val < 0.05)
+sum(top$P.Value< 0.05)
+output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
+output <- output[order(output$P.Value),]
+write.csv(output,file="limma_buccal_ilanguage.csv",row.names=FALSE)
+head(output,30) %>% kbl(caption="inverse language") %>% kable_paper("hover", full_width = F)
+saveRDS(design_tw, "buccal_design_ilanguage.rds")
+
+```
+
+## Converting to beta from M values
+
+```{r,betavals1}
+
+bDat = ilogit2(mvals)
+bDat_new = getBeta(gmset_flt)
+#View(bDat)
+write.csv(bDat,file="ASD_buccal_beta_onADOS_withintw_Nov27.csv",row.names=TRUE)
+
+```
+
+## Genome wide average methylation
+
+```{r,gwam}
+
+vioplot(bDat)
+
+#gwam <- colMeans(bDat)
+gwam <- apply(bDat,2,median)
+
+message("GWAM assocation with ADOS")
+mylm <- lm(gwam~ADOS)
+summary(mylm)
+
+message("GWAM assocation with SRS")
+mylm <- lm(gwam~SRS)
+summary(mylm)
+
+message("GWAM assocation with motor impairment")
+mylm <- lm(gwam~motor)
+summary(mylm)
+
+message("GWAM assocation with diagnosis")
+mylm <- lm(gwam~diagnosis)
+summary(mylm)
+
+message("GWAM assocation with iIQ")
+mylm <- lm(gwam~iiq)
+summary(mylm)
+plot(gwam~iiq)
+abline(mylm)
+
+message("GWAM assocation with ilanguage")
+mylm <- lm(gwam~ilanguage)
+summary(mylm)
+plot(gwam~ilanguage)
+abline(mylm)
+
+probes_body <- rownames(ann_sub[grep("Body",ann_sub$UCSC_RefGene_Group),])
+bDat_body <- bDat[which(rownames(bDat) %in% probes_body),]
+gwam <- apply(bDat_body,2,median)
+
+probes_body <- rownames(ann_sub[grep("Island",ann_sub$Relation_to_Island),])
+bDat_body <- bDat[which(rownames(bDat) %in% probes_body),]
+gwam <- apply(bDat_body,2,median)
+
+```
+
+
+
+## Plotting effect sizes of top DMPs
+
+```{r,effect1}
+
+res <- read.csv("limma_buccal_ADOS.csv")
+TOPPROBES <- head(res$Name,9)
+par(mfrow=c(3,3))
+sapply(TOPPROBES,effect_plot)
+
+pdf("effect_buccal.pdf")
+par(mfrow=c(3,3))
+sapply(TOPPROBES,effect_plot)
+dev.off()
+
+par(mfrow=c(1,1))
+
+```
+
+## Gene ontology of top DMPs LIMMA data
+
+Gene Ontology analysis (gometh): top 1000 probes (limma data).
+
+```{r,gometh4,eval=FALSE}
+
+sigCpGs_1k = res$Name[1:1000]
+
+sigCpGs_1k = as.character(sigCpGs_1k)
+all = res$Name
+length(all)
+
+# kegg
+gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
+
+```
+
+Now specifically analyse hypermethylated probes
+
+```{r,gometh5,eval=FALSE}
+
+res2 <- subset(res,logFC>0)
+sigCpGs_1k = res2$Name[1:1000]
+sigCpGs_1k = as.character(sigCpGs_1k)
+
+# kegg
+gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
+
+```
+
+Now specifically analyse hypomethylated probes
+
+```{r,gometh6,eval=FALSE}
+
+res2 <- subset(res,logFC<0)
+sigCpGs_1k = res2$Name[1:1000]
+sigCpGs_1k = as.character(sigCpGs_1k)
+
+# kegg
+gometh_kegg <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "KEGG", prior.prob=TRUE)
+gometh_kegg <- subset(gometh_kegg,DE>2)
+gometh_kegg$FDR <- p.adjust(gometh_kegg$P.DE)
+gometh_kegg <- gometh_kegg[order(gometh_kegg$P.DE),]
+head( gometh_kegg , 20)
+
+# GO terms
+gometh_go <- gometh(sig.cpg = sigCpGs_1k, all.cpg = all, collection = "GO" , prior.prob=TRUE)
+gometh_go <- subset(gometh_go,DE>2)
+gometh_go$FDR <- p.adjust(gometh_go$P.DE)
+gometh_go <- gometh_go[order(gometh_go$P.DE),]
+head( gometh_go , 20)
+
+```
+
+## DMRCate - differentially methylated region analysis
+
+```{r,dmrcate1}
+
+#design matrix in regression 
+design_tw <- model.matrix(~ADOS+Twin_Group)
+design_tw_dmrc <- model.matrix(~ADOS)
+#myannotation <- cpg.annotate("array", mDat, analysis.type="differential", design=design_tw, coef=2, fdr=1)
+myannotation <- cpg.annotate("array", mvals, what = "M", 
+  arraytype = "EPIC", analysis.type="differential", design_tw, coef=2)
+dmrcoutput <- dmrcate(myannotation, lambda=1000, C=2, pcutoff=0.001)
+results.ranges <- data.frame(extractRanges(dmrcoutput, genome = "hg19") )
+head(results.ranges, 20)
+write.csv(results.ranges, file = "dmrcoutput_buccal.csv", row.names = TRUE)
+
+```
+
+## Session information
+
+```{r,sessioninfo}
+
+sessionInfo()
+
+```
