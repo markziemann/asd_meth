@@ -24,13 +24,16 @@ Here are the files that I'm using:
 
 * limma_guthrie_ADOS.csv
 
+* limma_buccal_ADOS.csv
+
 ```{r,libs}
 
 suppressPackageStartupMessages({
+  library("limma")
   library("parallel")
   library("mitch")
   library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
-  source("https://raw.githubusercontent.com/markziemann/gmea/main/meth_functions.R")
+  source("meth_functions.R")
   library("data.table")
   library("kableExtra")
   library("eulerr")
@@ -53,12 +56,15 @@ source("meth_functions.R")
 
 bl_mvals <- readRDS(file="bl_mvals.rds")
 gu_mvals <- readRDS(file="gu_mvals.rds")
+bu_mvals <- readRDS(file="buccal_mvals.rds")
 
 bl_design <- readRDS(file="bl_design_ados.rds")
 gu_design <- readRDS(file="gu_design_ados.rds")
+bu_design <- readRDS(file="buccal_design_ados.rds")
 
 bl_lim <- read.csv("limma_blood_ADOS.csv")
 gu_lim <- read.csv("limma_guthrie_ADOS.csv")
+bu_lim <- read.csv("limma_buccal_ADOS.csv")
 
 
 ```
@@ -168,6 +174,51 @@ Now some visualisations.
 volcano_plot(res_gu_df)
 probe_bias(res_gu_df)
 gmea_boxplot(res_gu,sets)
+
+```
+
+
+## Gene level enrichment for buccal samples
+
+```{r,buccal1}
+
+tic()
+res_bu <- main(mval=bu_mvals,design=bu_design,sets,cores=detectCores()/2)
+res_bu[[1]] <- subset(res_bu[[1]],nprobes!=0) # remove genes with no probes obvs
+res_bu_df <- res_bu[[1]] # enrichment results
+res_bu_top <- res_bu[[2]] # limma results
+toc() ## 502-522 sec elapsed on 8 cores (8.3-8.7 mins)
+
+head(res_bu_df,30) %>%
+  kbl(caption="Top DM genes in buccal swabs identified with GMEA") %>%
+  kable_paper("hover", full_width = F)
+
+par(mfrow=c(2,1))
+hist(res_bu_top$t,xlab="probe t-stat",main="buccal swab") ; grid() ; abline(v=0,lty=1,lwd=3)
+hist(res_bu_df$median,xlab="gene median t-stat",main="buccal swab") ; grid() ; abline(v=0,lty=1,lwd=3)
+
+pdf("hist_bu_ados.pdf")
+par(mfrow=c(2,1))
+hist(res_bu_top$t,xlab="probe t-stat",main="buccal swab") ; grid() ; abline(v=0,lty=1,lwd=3)
+plot(1)
+hist(res_bu_df$median,xlab="gene median t-stat",main="buccal swab") ; grid() ; abline(v=0,lty=1,lwd=3)
+plot(1)
+dev.off()
+par(mfrow=c(1,1))
+
+subset(mitch_bu$enrichment_result,p.adjustANOVA<0.05 & s.dist<0) %>%
+  kbl(caption="Reactome pathways with an inverse methylation association with ADOS in buccal swab samples.") %>%
+  kable_paper("hover", full_width = F)
+
+```
+
+Now some visualisations.
+
+```{r,buccal2}
+
+volcano_plot(res_bu_df)
+probe_bias(res_bu_df)
+gmea_boxplot(res_bu,sets)
 
 ```
 
@@ -281,6 +332,7 @@ Pathways are from REACTOME and analysis using mitch.
 
 res_bl_df$bl <- res_bl_df$median
 res_gu_df$gu <- res_gu_df$median
+res_bu_df$bu <- res_bu_df$median
 
 bl <-  res_bl_df[,"bl",drop=FALSE]
 mitch_bl <- mitch_calc(bl,genesets,priority="effect")
@@ -303,6 +355,20 @@ sig <- subset(mitch_gu$enrichment_result,`p.adjustANOVA`<0.05)
 head(sig[order(-abs(sig$s.dist)),],30) %>%
   kbl(caption="GUTHRIE: Top effect size pathways found with mitch after 1% FDR filtering") %>%
   kable_paper("hover", full_width = F)
+
+bu <-  res_bu_df[,"bu",drop=FALSE]
+mitch_bu <- mitch_calc(bu,genesets,priority="effect")
+head( mitch_bu$enrichment_result,30) %>%
+  kbl(caption="BUCCAL: Top effect size pathways found with mitch") %>%
+  kable_paper("hover", full_width = F)
+
+sig <- subset(mitch_bu$enrichment_result,`p.adjustANOVA`<0.05)
+head(sig[order(-abs(sig$s.dist)),],30) %>%
+  kbl(caption="BUCCAL: Top effect size pathways found with mitch after 1% FDR filtering") %>%
+  kable_paper("hover", full_width = F)
+
+mitch_plots(res=mitch_bu,outfile="buccal_mitch_ados.pdf")
+mitch_report(res=mitch_bu,outfile="buccal_mitch_ados.html")
 
 ```
 
@@ -674,6 +740,46 @@ gu_gsmea$res$FDR <- p.adjust(gu_gsmea$res$PValue,method="fdr")
 head(gu_gsmea$res,20)  %>%  kbl(caption="Top DM pathways in Guthrie card identified with GSMEA") %>%
   kable_paper("hover", full_width = F)
 
+
+```
+
+## Gene level enrichment for blood
+
+```{r,buccalados1}
+
+tic()
+res_bu <- main(mval=bu_mvals,design=bu_design,sets,cores=detectCores()/2)
+res_bu[[1]] <- subset(res_bu[[1]],nprobes!=0) # remove genes with no probes obvs
+res_bu_df <- res_bu[[1]] # enrichment results
+res_bu_top <- res_bu[[2]] # limma results
+toc() ## 502-522 sec elapsed on 8 cores (8.3-8.7 mins)
+
+head(res_bu_df,30) %>%
+  kbl(caption="Top DM genes in blood identified with GMEA") %>%
+  kable_paper("hover", full_width = F)
+
+par(mfrow=c(2,1))
+hist(res_bu_top$t,xlab="probe t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
+hist(res_bu_df$median,xlab="gene median t-stat",main="blood at assessment") ; grid() ; abline(v=0,lty=1,lwd=3)
+
+pdf("hist_buccal_ados.pdf")
+par(mfrow=c(2,1))
+hist(res_bu_top$t,xlab="probe t-stat",main="buccal samples") ; grid() ; abline(v=0,lty=1,lwd=3)
+plot(1)
+hist(res_bu_df$median,xlab="gene median t-stat",main="buccal samples") ; grid() ; abline(v=0,lty=1,lwd=3)
+plot(1)
+dev.off()
+par(mfrow=c(1,1))
+
+```
+
+Now some visualisations.
+
+```{r,buccalados2}
+
+volcano_plot(res_bu_df)
+probe_bias(res_bu_df)
+gmea_boxplot(res_bu,sets)
 
 ```
 
