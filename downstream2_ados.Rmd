@@ -206,10 +206,6 @@ plot(1)
 dev.off()
 par(mfrow=c(1,1))
 
-subset(mitch_bu$enrichment_result,p.adjustANOVA<0.05 & s.dist<0) %>%
-  kbl(caption="Reactome pathways with an inverse methylation association with ADOS in buccal swab samples.") %>%
-  kable_paper("hover", full_width = F)
-
 ```
 
 Now some visualisations.
@@ -319,6 +315,10 @@ head(mg2,20) %>%
 
 genesets <- gmt_import("ReactomePathways.gmt")
 
+sfari <- readLines("sfari.txt")
+lsfari <- list(sfari)
+names(lsfari) <- "sfari"
+
 cores = 8
 
 ```
@@ -328,7 +328,7 @@ cores = 8
 Here I'm using the median t-statistic for downstream enrichment.
 Pathways are from REACTOME and analysis using mitch.
 
-```{r,mitch_direction,eval=FALSE}
+```{r,mitch_direction}
 
 res_bl_df$bl <- res_bl_df$median
 res_gu_df$gu <- res_gu_df$median
@@ -368,7 +368,11 @@ head(sig[order(-abs(sig$s.dist)),],30) %>%
   kable_paper("hover", full_width = F)
 
 mitch_plots(res=mitch_bu,outfile="buccal_mitch_ados.pdf")
-mitch_report(res=mitch_bu,outfile="buccal_mitch_ados.html")
+#mitch_report(res=mitch_bu,outfile="buccal_mitch_ados.html")
+
+subset(mitch_bu$enrichment_result,p.adjustANOVA<0.05 & s.dist<0) %>%
+  kbl(caption="Reactome pathways with an inverse methylation association with ADOS in buccal swab samples.") %>%
+  kable_paper("hover", full_width = F)
 
 ```
 
@@ -389,6 +393,29 @@ sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
 head(sig[order(-abs(sig$s.dist)),],30) %>%
   kbl(caption="Top pathways found with mitch (effect size after 1% FDR filtering)") %>%
   kable_paper("hover", full_width = F)
+
+```
+
+Now let's take a look at the SFARI gene list.
+
+```{r,mitch_joint}
+
+str(lsfari)
+
+sfarires <- mitch_calc(m2, lsfari, priority="effect")
+t(sfarires$enrichment_result)
+
+lrand <-lapply(1:1034,function(i) { set.seed(i*1000) ; sample(rownames(m2),1000) })
+names(lrand) <- paste("random",1:1034)
+lsets <- c(lsfari,lrand)
+
+sfarires2 <- mitch_calc(m2, lsets, priority="effect",cores=16)
+
+head(sfarires2$enrichment_result) %>%
+  kbl(caption = "Enrichment analysis of SFARI genes") %>%
+  kable_paper("hover", full_width = F)
+
+#mitch_report(res=sfarires2,outfile="sfari.html",overwrite=TRUE)
 
 ```
 
