@@ -276,10 +276,8 @@ fit <- prcomp(t(mvals),center = TRUE, scale = TRUE,retx=TRUE)
 loadings = fit$x
 plot(fit,type="lines",col="blue")
 saveRDS(fit,"scree_guthrie_fircorrect.Rds")
-
-fitnc <- readRDS("scree_guthrie_fitnc.Rds")
-plot(fitnc,type="lines",col="blue")
-
+#fitnc <- readRDS("scree_guthrie_fitnc.Rds")
+plot(fit,type="lines",col="blue")
 nGenes = nrow(mvals)
 nSamples = ncol(mvals)
 datTraits = targets_gen[,7:15]
