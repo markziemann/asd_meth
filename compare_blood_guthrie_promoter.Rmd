@@ -31,7 +31,7 @@ suppressPackageStartupMessages({
   library("parallel")
   library("mitch")
   library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
-  source("https://raw.githubusercontent.com/markziemann/gmea/main/meth_functions.R")
+  source("https://raw.githubusercontent.com/markziemann/ART_methylation/master/meth_functions.R")
   library("data.table")
   library("kableExtra")
   library("eulerr")
@@ -45,10 +45,10 @@ suppressPackageStartupMessages({
 
 ```{r,load1}
 
-bl_design <- readRDS(file="bl_design.rds")
+bl_design <- readRDS(file="bl_design_ados.rds")
 bl_mvals <- readRDS(file="bl_mvals.rds")
 
-gu_design <- readRDS(file="gu_design.rds")
+gu_design <- readRDS(file="gu_design_ados.rds")
 gu_mvals <- readRDS(file="gu_mvals.rds")
 
 ```
@@ -226,7 +226,7 @@ Results are merged for the user.
 
 ```{r,bl1}
 
-bl_design <- readRDS(file="bl_design.rds")
+bl_design <- readRDS(file="bl_design_ados.rds")
 bl_mvals <- readRDS(file="bl_mvals.rds")
 
 tic()
@@ -255,7 +255,7 @@ gmea_boxplot(res_bl,sets)
 
 ```{r,gu1}
 
-gu_design <- readRDS(file="gu_design.rds")
+gu_design <- readRDS(file="gu_design_ados.rds")
 gu_mvals <- readRDS(file="gu_mvals.rds")
 
 tic()
@@ -281,6 +281,8 @@ gmea_boxplot(res_gu,sets)
 ```
 
 ## Mitch enrichment analysis
+
+Reactome was downloaded December 2022.
 
 ```{r,mitch1}
 
