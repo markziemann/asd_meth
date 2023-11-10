@@ -333,6 +333,79 @@ head(sig[order(-abs(sig$s.dist)),],30) %>%
 
 ```
 
+Now look at the pathways with hypomethylation.
+
+```{r,hypo}
+
+hypo <- subset(res$enrichment_result,p.adjustMANOVA<0.01 & s.bl <0 & s.gu < 0 )
+nrow(hypo)
+
+hypo <- hypo[nrow(hypo):1,]
+
+par(mar=c(4.1, 25.1, 5.1, 1.1))
+
+barplot(t(abs(hypo[,c("s.bl","s.gu")])),
+  beside=TRUE,horiz=TRUE,las=1,names.arg=hypo$set,
+  col=gray.colors(2),
+  xlab="enrichment score")
+
+legend("topright", inset=0, title="tissue",
+  c("blood at assessment","neonatal Guthrie card"),
+  fill=gray.colors(2), horiz=FALSE, cex=1)
+
+pdf("adosbarplot.pdf")
+
+par(mar=c(4.1, 25.1, 5.1, 1.1))
+
+barplot(t(abs(hypo[,c("s.bl","s.gu")])),
+  beside=TRUE,horiz=TRUE,las=1,names.arg=hypo$set, 
+  col=gray.colors(2),
+  xlab="enrichment score")
+
+legend("topright", inset=0, title="tissue",
+  c("blood at assessment","neonatal Guthrie card"), 
+  fill=gray.colors(2), horiz=FALSE, cex=1)
+
+dev.off()
+
+
+mar = c(5.1, 4.1, 4.1, 2.1)
+
+
+```
+
+Now look at metatropic glutamate/pheromone receptors.
+
+```{r,glutamate}
+
+phero <- genesets[grep("pheromone",names(genesets))]
+phero
+rnk2 <- rnk[which(rownames(rnk) %in% phero[[1]]),]
+
+plot(rnk2,main=names(phero),xlim=c(-21569,4146),ylim=c(-17678,8037),
+  xlab="Rank in blood at assessment",
+  ylab="Rank in neonatal Guthrie card",
+  cex=1.5,pch=19,col="lightgray")
+
+text(rnk2,labels=rownames(rnk2))
+
+abline(v=0,h=0,lwd=2,lty=2)
+
+pdf("phero.pdf")
+
+plot(rnk2,main=names(phero),xlim=c(-21569,4146),ylim=c(-17678,8037),
+  xlab="Rank in blood at assessment",
+  ylab="Rank in neonatal Guthrie card",
+  cex=1.5,pch=19,col="lightgray")
+
+text(rnk2,labels=rownames(rnk2))
+
+abline(v=0,h=0,lwd=2,lty=2)
+
+dev.off()
+
+```
+
 Now let's take a look at the SFARI gene list.
 
 ```{r,mitch_SFARI}
