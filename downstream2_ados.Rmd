@@ -238,12 +238,13 @@ Now we need a table of genes with top scores.
 
 ```{r,topgenes1}
 
-m3 <- m2
+m3 <- m1
 m3$med <- apply(rnk,1,median)
-mg <- merge(res_gu_df,res_bl_df,by=0)
-mg$gu = mg$bl = NULL
+mg <- merge(gu$df,bl$df,by=0)
+rownames(mg) <- mg$Row.names
 mg <- mg[rownames(mg) %in% rownames(m3),]
 dim(mg)
+mg$med <- m3$med
 mg <- mg[order(mg$med),]
 mg <-subset(mg,nprobes.x>=5)
 mg <-subset(mg,nprobes.x>=5)
@@ -338,14 +339,14 @@ Now let's take a look at the SFARI gene list.
 
 str(lsfari)
 
-sfarires <- mitch_calc(m2, lsfari, priority="effect")
+sfarires <- mitch_calc(m1, lsfari, priority="effect")
 t(sfarires$enrichment_result)
 
-lrand <-lapply(1:1034,function(i) { set.seed(i*1000) ; sample(rownames(m2),1000) })
+lrand <-lapply(1:1034,function(i) { set.seed(i*1000) ; sample(rownames(m1),1000) })
 names(lrand) <- paste("random",1:1034)
 lsets <- c(lsfari,lrand)
 
-sfarires2 <- mitch_calc(m2, lsets, priority="effect",cores=16,resrows=10)
+sfarires2 <- mitch_calc(m1, lsets, priority="effect",cores=16,resrows=10)
 
 head(sfarires2$enrichment_result) %>%
   kbl(caption = "Enrichment analysis of SFARI genes") %>%
