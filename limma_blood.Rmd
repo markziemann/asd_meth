@@ -155,7 +155,7 @@ cellCounts_long$Var1 <- targets_gen[match(cellCounts_long$Var1,
 colnames(cellCounts_long) <- c("diagnosis","celltype","value")
 
 ggplot(cellCounts_long, aes(x = factor(celltype), y = value, fill = factor(diagnosis))) + 
-  geom_boxplot() 
+  geom_boxplot()
 
 wx <- lapply(1:ncol(cellCounts_new) , function(i) {
   wilcox.test(a[,i],c[,i], paired=FALSE)
@@ -213,7 +213,7 @@ None of the p-values are less than 0.05.
 
 Now filter for high detection p-value and overlap with SNP.
 
-Need to get a copy of the Xreact probes from Namitha. 
+Need to get a copy of the Xreact probes from Namitha.
 In the mean time I have downloaded from github - link below.
 
 ```{r,filt1}
@@ -353,8 +353,8 @@ fit_tw <- lmFit(mvals, design_tw)
 fit2_tw <- eBayes(fit_tw)
 summary(decideTests(fit2_tw))
 top <- topTable(fit2_tw,coef="ADOS",num=Inf, sort.by = "P")
-nsig <- sum(top$adj.P.Val < 0.05)
-sum(top$P.Value< 0.05)
+nrow(subset(top,adj.P.Val < 0.05))
+nrow(subset(top,P.Value < 1e-4))
 output <-merge(ann_sub,top,by.x="Name",by.y="row.names")
 output <- output[order(output$P.Value),]
 write.csv(output, file="limma_blood_ADOS.csv",row.names=FALSE)
@@ -546,12 +546,17 @@ gwam <- apply(bDat_body,2,median)
 ```{r,effect1}
 
 res <- read.csv("limma_blood_ADOS.csv")
+
 TOPPROBES <- head(res$Name,9)
 par(mfrow=c(3,3))
 sapply(TOPPROBES,effect_plot)
 
+TOPPROBES <- head(res$Name,4)
+par(mfrow=c(2,2))
+sapply(TOPPROBES,effect_plot)
+
 pdf("effect_blood.pdf")
-par(mfrow=c(3,3))
+par(mfrow=c(2,2))
 sapply(TOPPROBES,effect_plot)
 dev.off()
 
@@ -563,7 +568,7 @@ par(mfrow=c(1,1))
 
 Gene Ontology analysis (gometh): top 1000 probes (limma data).
 
-```{r,gometh4,eval=FALSE}
+```{r,gometh4}
 
 sigCpGs_1k = res$Name[1:1000]
 
