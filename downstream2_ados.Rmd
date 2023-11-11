@@ -406,6 +406,27 @@ dev.off()
 
 ```
 
+Make a heatmap of top TAS2R gene probes.
+
+```{r,tar2r}
+
+colcolfunc <- colorRampPalette(c("yellow", "orange"))
+
+colcols <- colcolfunc(20)[bl_design[,"ADOS"]]
+
+phero_probes <- unlist(sets[which(names(sets) %in% phero[[1]])])
+
+phero_mvals <- bl_mvals[rownames(bl_mvals) %in% phero_probes,]
+
+colfunc <- colorRampPalette(c("blue", "white", "red"))
+
+heatmap.2(phero_mvals,trace="none",col=colfunc(25), margins = c(5,8), scale="row",
+  main="Class C/3 (Metabotropic glutamate/pheromone receptors) probes",
+  ColSideColors = colcols )
+
+
+```
+
 Now let's take a look at the SFARI gene list.
 
 ```{r,mitch_SFARI}
@@ -426,6 +447,8 @@ head(sfarires2$enrichment_result) %>%
   kable_paper("hover", full_width = F)
 
 mitch_plots(res=sfarires2,outfile="sfari_mitch_ados.pdf")
+
+mitch_report(res=sfarires2,outfile="sfari_mitch_ados.html",overwrite=TRUE)
 
 ```
 
