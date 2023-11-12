@@ -30,13 +30,11 @@ suppressPackageStartupMessages({
   library("parallel")
   library("mitch")
   library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
-  source("https://raw.githubusercontent.com/markziemann/gmea/main/meth_functions.R")
+  source("https://raw.githubusercontent.com/markziemann/ART_methylation/master/meth_functions.R")
   library("data.table")
   library("kableExtra")
   library("eulerr")
-  library("RIdeogram")
   library("GenomicRanges")
-  library("tictoc")
 })
 
 source("meth_functions.R")
@@ -44,7 +42,7 @@ source("meth_functions.R")
 ```
 
 
-## Load Limma and RUV data for manhattan plot
+## Load Limma data for manhattan plot
 
 First I will generate plots for limmma analysis.
 

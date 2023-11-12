@@ -37,11 +37,7 @@ suppressPackageStartupMessages({
   library("data.table")
   library("kableExtra")
   library("eulerr")
-  library("RIdeogram")
   library("GenomicRanges")
-  library("tictoc")
-  library("globaltest")
-  library("ebGSEA")
   data("dualmap850kEID")
 })
 
@@ -304,7 +300,7 @@ head(sig[order(-abs(sig$s.dist)),],30) %>%
   kable_paper("hover", full_width = F)
 
 mitch_plots(res=mitch_bu,outfile="buccal_mitch_ados.pdf")
-#mitch_report(res=mitch_bu,outfile="buccal_mitch_ados.html")
+mitch_report(res=mitch_bu,outfile="buccal_mitch_ados.html")
 
 subset(mitch_bu$enrichment_result,p.adjustANOVA<0.01 & s.dist<0) %>%
   kbl(caption="Reactome pathways with an inverse methylation association with ADOS in buccal swab samples.") %>%
