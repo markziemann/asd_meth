@@ -15,12 +15,15 @@ RUN apt-get update \
 RUN Rscript -e 'install.packages(c("beeswarm","data.table","dplyr","eulerr","ggplot2","gplots","kableExtra", "matrixStats", "RColorBrewer", "reshape2", "vioplot"))'
 
 # Install bioconductor packages
-RUN Rscript -e 'BiocManager::install(c("FlowSorted.Blood.450k", "FlowSorted.Blood.EPIC", "GenomicRanges", "IlluminaHumanMethylation450kanno.ilmn12.hg19", "IlluminaHumanMethylationEPICanno.ilm10b2.hg19", "IlluminaHumanMethylationEPICanno.ilm10b4.hg19", "impute", "limma", "minfi", "missMethyl", "mitch"))'
+RUN Rscript -e 'BiocManager::install(c("DMRcate","FlowSorted.Blood.450k", "FlowSorted.Blood.EPIC", "GenomicRanges", "IlluminaHumanMethylation450kanno.ilmn12.hg19", "IlluminaHumanMethylationEPICanno.ilm10b2.hg19", "IlluminaHumanMethylationEPICanno.ilm10b4.hg19", "impute", "limma", "minfi", "missMethyl", "mitch"))'
 
+# WGCNA separately
 RUN Rscript -e 'install.packages(c("WGCNA"))'
 
+# get a clone of the codes
 RUN git clone https://github.com/markziemann/asd_meth.git
 
+# copy in the EPIC array data
 COPY ASD_EPIC_DATA /asd_meth/ASD_EPIC_DATA
 
 # Set the container working directory
