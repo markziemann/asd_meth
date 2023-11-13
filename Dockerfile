@@ -17,14 +17,14 @@ RUN git clone https://github.com/bmbolstad/preprocessCore.git && \
   R CMD INSTALL --configure-args="--disable-threading" . && \
   cd ..
 
+# Install CRAN packages
+RUN Rscript -e 'install.packages(c("beeswarm","data.table","dplyr","eulerr","ggplot2","gplots","kableExtra", "matrixStats", "RColorBrewer", "reshape2", "vioplot","cellranger","readxl","rematch","qqman","forestplot","dbplyr","dplyr","RSQLite","DBI","filelock"))'
+
 # BiocFileCache is also problematic
 RUN git clone https://github.com/Bioconductor/BiocFileCache.git && \
   cd BiocFileCache && \
   R CMD INSTALL --configure-args="--disable-threading" . && \
   cd ..
-
-# Install CRAN packages
-RUN Rscript -e 'install.packages(c("beeswarm","data.table","dplyr","eulerr","ggplot2","gplots","kableExtra", "matrixStats", "RColorBrewer", "reshape2", "vioplot","cellranger","readxl","rematch","qqman","forestplot"))'
 
 # Install bioconductor packages
 RUN Rscript -e 'BiocManager::install(c("DMRcate","FlowSorted.Blood.450k", "FlowSorted.Blood.EPIC", "GenomicRanges", "IlluminaHumanMethylation450kanno.ilmn12.hg19", "IlluminaHumanMethylationEPICanno.ilm10b2.hg19", "IlluminaHumanMethylationEPICanno.ilm10b4.hg19", "impute", "limma", "minfi", "missMethyl", "mitch","DMRcatedata"))'
