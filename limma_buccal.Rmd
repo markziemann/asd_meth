@@ -56,7 +56,7 @@ This analysis is to be conducted on Ubuntu with R4.
 
 ```{r,load_data1}
 
-ann = getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
+ann = getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
 
 ann_sub = ann[,c("chr","pos","strand","Name","Islands_Name",
     "Relation_to_Island","UCSC_RefGene_Name","UCSC_RefGene_Group")]

@@ -1,3 +1,5 @@
+# this is the main R script which generates all the results.
+# Run this inside the docker container
 
 # look at the covariates
 rmarkdown::render("asd_covariates.Rmd")
@@ -8,12 +10,13 @@ rmarkdown::render("limma_blood.Rmd")
 # limma analysis of guthrie card data
 rmarkdown::render("limma_guthrie.Rmd")
 
-# compartment enrichment
-ml <- list.files(".",pattern="downstream1")
-ml <- ml[grep("Rmd",ml)]
-lapply(ml,rmarkdown::render)
+# limma analysis of buccal swab data
+rmarkdown::render("limma_buccal.Rmd")
 
-# pathway enrichment 2
-ml <- list.files(".",pattern="downstream2")
-ml <- ml[grep("Rmd",ml)]
-lapply(ml,rmarkdown::render)
+# basic downstream analysis
+# DMR calling and ORA pathway enrichment
+rmarkdown::render("downstream1_ados.Rmd")
+
+# deep downstream analysis
+# pathway enrichment with mitch
+rmarkdown::render("downstream2_ados.Rmd")
