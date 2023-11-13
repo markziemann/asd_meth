@@ -35,6 +35,8 @@ suppressPackageStartupMessages({
   library("kableExtra")
   library("eulerr")
   library("GenomicRanges")
+  library("qqman")
+  library("forestplot")
 })
 
 source("meth_functions.R")
