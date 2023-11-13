@@ -1,4 +1,4 @@
-FROM bioconductor/bioconductor_docker:RELEASE_3_17
+FROM bioconductor/bioconductor_docker:RELEASE_3_18
 
 # Update apt-get
 RUN apt-get update \
@@ -15,13 +15,13 @@ RUN apt-get update \
 RUN Rscript -e 'install.packages(c("beeswarm","data.table","dplyr","eulerr","ggplot2","gplots","kableExtra", "matrixStats", "RColorBrewer", "reshape2", "vioplot"))'
 
 # Install bioconductor packages
-RUN Rscript -e 'BiocManager::install(c("DMRcate", "FlowSorted.Blood.450k", "FlowSorted.Blood.EPIC", "GenomicRanges", "IlluminaHumanMethylation450kanno.ilmn12.hg19", "IlluminaHumanMethylationEPICanno.ilm10b4.hg19", "impute", "limma", "minfi", "missMethyl", "mitch"))'
+RUN Rscript -e 'BiocManager::install(c("FlowSorted.Blood.450k", "FlowSorted.Blood.EPIC", "GenomicRanges", "IlluminaHumanMethylation450kanno.ilmn12.hg19", "IlluminaHumanMethylationEPICanno.ilm10b2.hg19", "IlluminaHumanMethylationEPICanno.ilm10b4.hg19", "impute", "limma", "minfi", "missMethyl", "mitch"))'
 
 RUN Rscript -e 'install.packages(c("WGCNA"))'
 
 RUN git clone https://github.com/markziemann/asd_meth.git
 
-COPY ASD_EPIC_DATA /asd_meth
+COPY ASD_EPIC_DATA /asd_meth/ASD_EPIC_DATA
 
 # Set the container working directory
 ENV DIRPATH /asd_meth

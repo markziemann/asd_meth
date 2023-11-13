@@ -2,7 +2,11 @@
 # Run this inside the docker container
 
 # look at the covariates
-rmarkdown::render("asd_covariates.Rmd")
+if (file.exists("asd_covariates.html") ) {
+  message("asd_covariates.Rmd script completed")
+} else {
+  rmarkdown::render("asd_covariates.Rmd")
+}
 
 # limma analysis of blood data
 rmarkdown::render("limma_blood.Rmd")
