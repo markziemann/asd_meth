@@ -77,10 +77,9 @@ compartment_enrichment <- function(dma) {
 # but only for the top 1000 probes
 compartment_enrichment2 <- function(dma) {
   all <- table(unlist(lapply(strsplit(dma$UCSC_RefGene_Group,";"),unique)))
-  dma <- head(dma,1000)
-  up <- subset(dma,logFC>0 )
+  up <- head(subset(dma,logFC>0 ),1000)
   up <- table(unlist(lapply(strsplit(up$UCSC_RefGene_Group,";"),unique)))
-  dn <- subset(dma,logFC<0 )
+  dn <- head(subset(dma,logFC<0 ),1000)
   dn <- table(unlist(lapply(strsplit(dn$UCSC_RefGene_Group,";"),unique)))
   xx=NULL
   xx <- merge(as.data.frame(all, row.names = 1),as.data.frame(up,row.names = 1),by=0, all = TRUE)
@@ -188,9 +187,8 @@ cgi_enrichment2 <- function(dma) {
   dma$Relation_to_Island <- gsub("N_","",dma$Relation_to_Island)
   dma$Relation_to_Island <- gsub("S_","",dma$Relation_to_Island)
   all <- table(unique(dma)$Relation_to_Island)
-  dma <- head(dma,1000)
-  up <- subset(dma,logFC>0 )
-  dn <- subset(dma,logFC<0 )
+  up <- head(subset(dma,logFC>0 ),1000)
+  dn <- head(subset(dma,logFC<0 ),1000)
   up <- table(unique(up)$Relation_to_Island)
   dn <- table(unique(dn)$Relation_to_Island)
   xx=NULL
@@ -377,6 +375,7 @@ volcano_plot <- function(res) {
 # A boxplot of GMEA results
 gmea_boxplot <- function(res,sets,n=50) {
   df <- res[[1]]
+  df <- subset(df,nprobes>=5)
   limma_df <- res[[2]]
   # smallest pval
   par(mfrow=c(1,2))
@@ -391,11 +390,12 @@ gmea_boxplot <- function(res,sets,n=50) {
     xlab="t-statistic")
   grid()
   # biggest effect size (median)
-  sig <- subset(df,FDR < 0.05)
+  sig <- subset(df,FDR < 0.05 )
   gs <- head(rownames(sig[order(-abs(sig$median)),]),n)
   if ( length(gs) >2 ) {
-    tstats <- lapply(gs, function(g) {
-      df[which(df$genes==g),"tvals"]
+    mysets <- sets[names(sets) %in% gs]
+    tstats <- lapply(mysets, function(set) {
+      limma_df[rownames(limma_df) %in% set,"t"]
     })
     names(tstats) <- gs
     tstats <- tstats[order(unlist(lapply(tstats,median)))]

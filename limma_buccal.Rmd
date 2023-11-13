@@ -29,7 +29,6 @@ suppressPackageStartupMessages({
   library("minfi")
   library("IlluminaHumanMethylation450kanno.ilmn12.hg19")
   library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
-  library("ruv")
   library("RColorBrewer")
   library("matrixStats")
   library("gplots")
