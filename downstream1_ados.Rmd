@@ -30,7 +30,7 @@ suppressPackageStartupMessages({
   library("parallel")
   library("mitch")
   library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
-  source("https://raw.githubusercontent.com/markziemann/ART_methylation/master/meth_functions.R")
+  source("meth_functions.R")
   library("data.table")
   library("kableExtra")
   library("eulerr")
