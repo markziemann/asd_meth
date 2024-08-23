@@ -1,6 +1,6 @@
 # this is the main R script which generates all the results.
 # Run this inside the docker container
-
+mkdir -p ~/.cache/R/ExperimentHub
 # look at the covariates
 if (file.exists("asd_covariates.html") ) {
   message("asd_covariates.Rmd script completed")
