@@ -302,8 +302,8 @@ head(sig[order(-abs(sig$s.dist)),],30) %>%
   kbl(caption="BUCCAL: Top effect size pathways found with mitch after 1% FDR filtering") %>%
   kable_paper("hover", full_width = F)
 
-mitch_plots(res=mitch_bu,outfile="buccal_mitch_ados.pdf")
-mitch_report(res=mitch_bu,outfile="buccal_mitch_ados.html")
+mitch_plots(res=mitch_bu,outfile="buccal_mitch_ados_nr.pdf")
+mitch_report(res=mitch_bu,outfile="buccal_mitch_ados_nr.html")
 
 subset(mitch_bu$enrichment_result,p.adjustANOVA<0.01 & s.dist<0) %>%
   kbl(caption="Reactome pathways with an inverse methylation association with ADOS in buccal swab samples.") %>%
@@ -322,8 +322,8 @@ m$Row.names = NULL
 colnames(m) <- c("bl","gu")
 m[is.na(m)] <- 0
 res <- mitch_calc(m, genesets, priority="effect")
-mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
-mitch_plots(res=res,outfile="blgu_mitch_ados.pdf")
+mitch_report(res,"blgu_mitch_nr.html")
+mitch_plots(res=res,outfile="blgu_mitch_ados_nr.pdf")
 sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
 
 head(sig[order(-abs(sig$s.dist)),],30) %>%
@@ -427,29 +427,6 @@ heatmap.2(phero_mvals,trace="none",col=colfunc(25), margins = c(5,8), scale="row
 ```
 
 Now let's take a look at the SFARI gene list.
-
-```{r,mitch_SFARI}
-
-str(lsfari)
-
-sfarires <- mitch_calc(m1, lsfari, priority="effect")
-t(sfarires$enrichment_result)
-
-lrand <-lapply(1:1034,function(i) { set.seed(i*1000) ; sample(rownames(m1),1000) })
-names(lrand) <- paste("random",1:1034)
-lsets <- c(lsfari,lrand)
-
-sfarires2 <- mitch_calc(m1, lsets, priority="effect",cores=16,resrows=10)
-
-head(sfarires2$enrichment_result) %>%
-  kbl(caption = "Enrichment analysis of SFARI genes") %>%
-  kable_paper("hover", full_width = F)
-
-mitch_plots(res=sfarires2,outfile="sfari_mitch_ados.pdf")
-
-mitch_report(res=sfarires2,outfile="sfari_mitch_ados.html",overwrite=TRUE)
-
-```
 
 ## Session information
 
