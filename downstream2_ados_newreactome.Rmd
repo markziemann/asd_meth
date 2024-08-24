@@ -38,8 +38,8 @@ suppressPackageStartupMessages({
   library("kableExtra")
   library("eulerr")
   library("GenomicRanges")
-  data("dualmap850kEID")
   library("RhpcBLASctl")
+  data("dualmap850kEID")
 })
 
 source("meth_functions.R")

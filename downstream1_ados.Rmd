@@ -37,9 +37,12 @@ suppressPackageStartupMessages({
   library("GenomicRanges")
   library("qqman")
   library("forestplot")
+  library("RhpcBLASctl")
 })
 
 source("meth_functions.R")
+
+RhpcBLASctl::blas_set_num_threads(1)
 
 ```
 

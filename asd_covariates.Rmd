@@ -29,7 +29,10 @@ suppressPackageStartupMessages({
   library("gplots")
   library("ggplot2")
   library("beeswarm")
+  library("RhpcBLASctl")
 })
+
+RhpcBLASctl::blas_set_num_threads(1)
 
 ```
 

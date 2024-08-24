@@ -40,11 +40,13 @@ suppressPackageStartupMessages({
   library("GenomicRanges")
   library("HGNChelper")
   library("gplots")
-
+  library("RhpcBLASctl")
   #data("dualmap850kEID")
 })
 
 #source("meth_functions.R")
+
+RhpcBLASctl::blas_set_num_threads(1)
 
 ```
 
@@ -193,25 +195,40 @@ hist(m_buc_mot[,1],breaks=40,xlab="t (gene level)",main="Buccal motor skills")
 
 par( mar = c(5.1, 4.1, 4.1, 2.1) )
 
-plot(m_bl_ados[,1],m_gu_ados[,1],xlab="blood at assessment",ylab="neonatal Guthrie card",
-  col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,
-  pch=19,cex=0.9, main="ADOS")
+df <- merge(m_bl_ados,m_gu_ados,by=0)
+rownames(df) <- df[,1]
+df[,1]=NULL
+colnames(df) <- c("Blood at assessment","Guthrie card")
+plot(df, col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,pch=19, cex=0.9, main="ADOS")
+abline(v=0,h=0,lty=2)
 
-plot(m_bl_diag[,1],m_gu_diag[,1],xlab="blood at assessment",ylab="neonatal Guthrie card",
-  col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,
-  pch=19,cex=0.9, main="Diagnosis")
+df <- merge(m_bl_diag,m_gu_diag,by=0)
+rownames(df) <- df[,1]
+df[,1]=NULL
+colnames(df) <- c("Blood at assessment","Guthrie card")
+plot(df, col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,pch=19, cex=0.9, main="Diagnosis")
+abline(v=0,h=0,lty=2)
 
-plot(m_bl_iiq[,1],m_gu_iiq[,1],xlab="blood at assessment",ylab="neonatal Guthrie card",
-  col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,
-  pch=19,cex=0.9, main="inverse IQ")
+df <- merge(m_bl_iiq,m_gu_iiq,by=0)
+rownames(df) <- df[,1]
+df[,1]=NULL
+colnames(df) <- c("Blood at assessment","Guthrie card")
+plot(df, col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,pch=19, cex=0.9, main="Inverse IQ")
+abline(v=0,h=0,lty=2)
 
-plot(m_bl_ilan[,1],m_gu_ilan[,1],xlab="blood at assessment",ylab="neonatal Guthrie card",
-  col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,
-  pch=19,cex=0.9, main="inverse language")
+df <- merge(m_bl_ilan,m_gu_ilan,by=0)
+rownames(df) <- df[,1]
+df[,1]=NULL
+colnames(df) <- c("Blood at assessment","Guthrie card")
+plot(df, col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,pch=19, cex=0.9, main="Inverse language")
+abline(v=0,h=0,lty=2)
 
-plot(m_bl_ados[,1],m_gu_ados[,1],xlab="blood at assessment",ylab="neonatal Guthrie card",
-  col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,
-  pch=19,cex=0.9, main="ADOS")
+df <- merge(m_bl_mot,m_gu_mot,by=0)
+rownames(df) <- df[,1]
+df[,1]=NULL
+colnames(df) <- c("Blood at assessment","Guthrie card")
+plot(df, col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,pch=19, cex=0.9, main="Motor skill")
+abline(v=0,h=0,lty=2)
 
 ```
 

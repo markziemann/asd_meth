@@ -42,9 +42,12 @@ suppressPackageStartupMessages({
   library("mitch")
   library("kableExtra")
   library("vioplot")
+  library("RhpcBLASctl")
 })
 
 source("meth_functions.R")
+
+RhpcBLASctl::blas_set_num_threads(1)
 
 ```
 
