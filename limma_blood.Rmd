@@ -649,8 +649,13 @@ head( gometh_go , 20)
 design_tw <- model.matrix(~ADOS+Twin_Group)
 design_tw_dmrc <- model.matrix(~ADOS)
 #myannotation <- cpg.annotate("array", mDat, analysis.type="differential", design=design_tw, coef=2, fdr=1)
+
+# funny anno bug?
+anno <- anno[which(rownames(anno) %in% rownames(mvals)),]
+
 myannotation <- cpg.annotate("array", mvals, what = "M",
   arraytype = "EPICv1", analysis.type="differential", design=design_tw, coef=2)
+
 dmrcoutput <- dmrcate(myannotation, lambda=1000, C=2, pcutoff=0.001)
 results.ranges <- data.frame(extractRanges(dmrcoutput, genome = "hg19") )
 head(results.ranges, 20)
