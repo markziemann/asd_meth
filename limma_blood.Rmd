@@ -659,6 +659,7 @@ myannotation <- cpg.annotate("array", mvals, what = "M",
 dmrcoutput <- dmrcate(myannotation, lambda=1000, C=2, pcutoff=0.001)
 results.ranges <- data.frame(extractRanges(dmrcoutput, genome = "hg19") )
 head(results.ranges, 20)
+results.ranges$overlapping.genes=NULL
 write.csv(results.ranges, file = "dmrcoutput.csv", row.names = TRUE)
 
 ```
