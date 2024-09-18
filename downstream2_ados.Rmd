@@ -32,13 +32,14 @@ suppressPackageStartupMessages({
   library("limma")
   library("parallel")
   library("mitch")
+  library("HGNChelper")
   library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
   source("meth_functions.R")
   library("data.table")
   library("kableExtra")
   library("eulerr")
   library("GenomicRanges")
-  data("dualmap850kEID")
+#  data("dualmap850kEID")
   library("RhpcBLASctl")
 })
 
@@ -47,6 +48,34 @@ source("meth_functions.R")
 RhpcBLASctl::blas_set_num_threads(1)
 
 ```
+
+## Annotation
+
+```{r,anno1}
+
+anno <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+myann <- data.frame(anno[,c("UCSC_RefGene_Name","UCSC_RefGene_Group","Islands_Name","Relation_to_Island")])
+head(myann)
+
+gp <- myann[,"UCSC_RefGene_Name",drop=FALSE]
+gp2 <- strsplit(gp$UCSC_RefGene_Name,";")
+names(gp2) <- rownames(gp)
+gp2 <- lapply(gp2,unique)
+gt <- stack(gp2)
+colnames(gt) <- c("gene","probe")
+gt$probe <- as.character(gt$probe)
+dim(gt)
+head(gt)
+
+#update gene symbols
+new.hgnc.table <- readRDS("new.hgnc.table.rds")
+fix <- checkGeneSymbols(gt$gene,map=new.hgnc.table)
+fix2 <- fix[which(fix$x != fix$Suggested.Symbol),]
+length(unique(fix2$x))
+gt$gene <- fix$Suggested.Symbol
+
+```
+
 
 ## Load data
 
@@ -64,110 +93,61 @@ bl_lim <- read.csv("limma_blood_ADOS.csv")
 gu_lim <- read.csv("limma_guthrie_ADOS.csv")
 bu_lim <- read.csv("limma_buccal_ADOS.csv")
 
-
 ```
 
-## Probe sets
-
-For each gene, extract out the probes.
-
-```{r,probesets}
-
-anno <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
-myann <- data.frame(anno[,c("UCSC_RefGene_Name","Regulatory_Feature_Group","Islands_Name","Relation_to_Island")])
-promoters <- grep("Prom",myann$Regulatory_Feature_Group)
-promoters <- myann[promoters,]
-gp <- myann[,"UCSC_RefGene_Name",drop=FALSE]
-gp2 <- strsplit(gp$UCSC_RefGene_Name,";")
-names(gp2) <- rownames(gp)
-sets <- split(rep(names(gp2), lengths(gp2)), unlist(gp2))
-summary(unlist(lapply(sets,length)))
-
-```
-
-## Gene methylation enrichment for blood
+## Mitch import
 
 For each gene, calculate the mean probe t-statistic.
 
-```{r,bl1}
+```{r,mitchimport}
 
-bl <- pmea(mval=bl_mvals,design=bl_design,sets,cores=10)
-str(bl)
-blm <- bl$df[,"mean",drop=FALSE]
-blm <- blm[!is.na(blm$mean),,drop=FALSE] # remove NA vals
-head(blm)
-nrow(blm)
+blm <- mitch_import(bl_lim,DEtype="limma",geneTable=gt,geneIDcol="Name")
+
+gum <- mitch_import(gu_lim,DEtype="limma",geneTable=gt,geneIDcol="Name")
+
+bum <- mitch_import(bu_lim,DEtype="limma",geneTable=gt,geneIDcol="Name")
+
+```
+
+## Probe level t-stats
+
+```{r,probelevel}
+
+dim(bl_lim)
 
 par(mfrow=c(2,1))
-hist(bl$toptable$t,xlab="probe t-stat",main="blood at assessment", breaks=30) ; grid() ; abline(v=0,lty=1,lwd=3)
-hist(bl$df$mean,xlab="gene mean t-stat",main="blood at assessment", breaks=30) ; grid() ; abline(v=0,lty=1,lwd=3)
+
+hist(bl_lim$t,xlab="probe t-stat",main="blood at assessment", breaks=30, xlim=c(-4,4))
+grid() ; abline(v=0,lty=1,lwd=3)
+hist(blm$x,xlab="gene mean t-stat",main="blood at assessment", breaks=30, xlim=c(-2,2))
+grid() ; abline(v=0,lty=1,lwd=3)
+
+hist(gu_lim$t,xlab="probe t-stat",main="neonatal Guthrie card", breaks=30, xlim=c(-4,4))
+grid() ; abline(v=0,lty=1,lwd=3)
+hist(gum$x,xlab="gene mean t-stat",main="neonatal Guthrie card", breaks=30, xlim=c(-2,2))
+grid() ; abline(v=0,lty=1,lwd=3)
+
+hist(bu_lim$t,xlab="probe t-stat",main="buccal swab", breaks=30, xlim=c(-4,4))
+grid() ; abline(v=0,lty=1,lwd=3)
+hist(bum$x,xlab="gene mean t-stat",main="buccal swab", breaks=30, xlim=c(-2,2))
+grid() ; abline(v=0,lty=1,lwd=3)
 
 pdf("hist_bl_ados.pdf")
 par(mfrow=c(2,1))
-hist(bl$toptable$t,xlab="probe t-stat",main="blood at assessment",breaks=30) ; grid() ; abline(v=0,lty=1,lwd=3)
-plot(1)
-hist(bl$df$mean,xlab="gene mean t-stat",main="blood at assessment", breaks=30) ; grid() ; abline(v=0,lty=1,lwd=3)
-plot(1)
+hist(bl_lim$t,xlab="probe t-stat",main="blood at assessment", breaks=30, xlim=c(-4,4))
+grid() ; abline(v=0,lty=1,lwd=3)
+hist(blm$x,xlab="gene mean t-stat",main="blood at assessment", breaks=30, xlim=c(-2,2))
+grid() ; abline(v=0,lty=1,lwd=3)
 dev.off()
-par(mfrow=c(1,1))
-
-gmea_boxplot(bl,sets)
-
-```
-
-## Gene methylation enrichment for guthrie cards
-
-```{r,gu1}
-
-gu <- pmea(mval=gu_mvals,design=gu_design,sets,cores=10)
-str(gu)
-gum <- gu$df[,"mean",drop=FALSE]
-gum <- gum[!is.na(gum$mean),,drop=FALSE] # remove NA vals
-head(gum)
-nrow(gum)
-
-par(mfrow=c(2,1))
-hist(gu$toptable$t,xlab="probe t-stat",main="neonatal Guthrie card",breaks=30) ; grid() ; abline(v=0,lty=1,lwd=3)
-hist(gu$df$mean,xlab="gene mean t-stat",main="neonatal Guthrie card",breaks=30) ; grid() ; abline(v=0,lty=1,lwd=3)
 
 pdf("hist_gu_ados.pdf")
-par(mfrow=c(2,1))
-hist(gu$toptable$t,xlab="probe t-stat",main="neonatal Guthrie card", breaks=30) ; grid() ; abline(v=0,lty=1,lwd=3)
-plot(1)
-hist(gu$df$mean,xlab="gene mean t-stat",main="neonatal Guthrie card", breaks=30) ; grid() ; abline(v=0,lty=1,lwd=3)
-plot(1)
+hist(gu_lim$t,xlab="probe t-stat",main="neonatal Guthrie card", breaks=30, xlim=c(-4,4))
+grid() ; abline(v=0,lty=1,lwd=3)
+hist(gum$x,xlab="gene mean t-stat",main="neonatal Guthrie card", breaks=30, xlim=c(-2,2))
+grid() ; abline(v=0,lty=1,lwd=3)
 dev.off()
+
 par(mfrow=c(1,1))
-
-gmea_boxplot(gu,sets)
-
-```
-
-## Gene methylation enrichment for buccal samples
-
-```{r,buccal1}
-
-bu <- pmea(mval=bu_mvals,design=bu_design,sets,cores=10)
-str(bu)
-bum <- bu$df[,"mean",drop=FALSE]
-bum <- bum[!is.na(bum$mean),,drop=FALSE] # remove NA vals
-head(bum)
-nrow(bum)
-
-par(mfrow=c(2,1))
-hist(bu$toptable$t,xlab="probe t-stat",main="buccal swab") ; grid() ; abline(v=0,lty=1,lwd=3)
-hist(bu$df$mean,xlab="gene mean t-stat",main="buccal swab") ; grid() ; abline(v=0,lty=1,lwd=3)
-
-pdf("hist_bu_ados.pdf")
-par(mfrow=c(2,1))
-hist(bu$toptable$t,xlab="probe t-stat",main="buccal swab") ; grid() ; abline(v=0,lty=1,lwd=3)
-plot(1)
-hist(bu$df$mean,xlab="gene mean t-stat",main="buccal swab") ; grid() ; abline(v=0,lty=1,lwd=3)
-plot(1)
-dev.off()
-par(mfrow=c(1,1))
-
-gmea_boxplot(bu,sets)
 
 ```
 
@@ -187,8 +167,9 @@ plot(m1$bl,m1$gu,xlab="blood at assessment",ylab="neonatal Guthrie card",
   col = rgb(red = 0.6, green = 0.6, blue = 0.6, alpha = 0.5) ,
   pch=19,cex=0.9)
 grid()
-abline(v=0,lty=1,lwd=3,col="black") ; abline(h=0,lty=1,lwd=3,col="black")
+abline(v=0, h=0, lty=2, lwd=2, col="blue")
 mtext("aggregated t-statistic for each gene (mean)")
+
 rm1 <- apply(m1,2,rank)
 mydiff <- apply(m1,2,function(x) { length(which(x<0)) } )
 rm2 <- rm1
@@ -233,34 +214,21 @@ dev.off()
 
 ```
 
-Now we need a table of genes with top scores.
-
-```{r,topgenes1}
-
-m3 <- m1
-m3$med <- apply(rnk,1,median)
-mg <- merge(gu$df,bl$df,by=0)
-rownames(mg) <- mg$Row.names
-mg <- mg[rownames(mg) %in% rownames(m3),]
-dim(mg)
-mg$med <- m3$med
-mg <- mg[order(mg$med),]
-mg <-subset(mg,nprobes.x>=5)
-mg <-subset(mg,nprobes.x>=5)
-dim(mg)
-mg$Row.names = mg$sig.x = mg$sig.y = mg$FDR.x = mg$FDR.y = mg$median.x = mg$median.y = mg$nprobes.y = NULL
-
-head(mg,20) %>%
-  kbl(caption="Genes with coordinated hypomethylation in neonatal Guthrie card and blood at assessment") %>%
-  kable_paper("hover", full_width = F)
-
-```
-
 ## Gene set level enrichment
 
-```{r,genesets1}
+```{r,mitchenrich1}
 
-genesets <- gmt_import("ReactomePathways.gmt")
+par(mar = c(5.1, 26.1, 4.1, 2.1))
+
+msigdb <- gmt_import("msigdb.v2023.2.Hs.symbols.gmt")
+
+gobp <- msigdb[grep("^GOBP",names(msigdb))]
+gomf <- msigdb[grep("^GOMF",names(msigdb))]
+gocc <- msigdb[grep("^GOCC",names(msigdb))]
+go <- c(gobp,gomf,gocc)
+names(go) <- gsub("_"," ",names(go))
+
+reactome <- gmt_import("ReactomePathways_2024-09-18.gmt")
 
 sfari <- readLines("sfari.txt")
 lsfari <- list(sfari)
@@ -268,46 +236,82 @@ names(lsfari) <- "sfari"
 
 cores = 8
 
-```
+## BLOOD
+bl_mres1 <- mitch_calc(bl_lim_m,go,priority="effect",cores=cores,minsetsize=5)
+bl_mres1tbl <- subset(bl_mres1$enrichment_result,p.adjustANOVA<0.01)
+top <- head(bl_mres1tbl,30)
 
-## Mitch enrichment analysis
-
-Here I'm using the mean t-statistic for downstream enrichment.
-These have already been saved to objects called `blm`, `gum` and `bum`.
-Pathways are from REACTOME and analysis using mitch.
-
-```{r,mitch_direction}
-
-mitch_bl <- mitch_calc(blm,genesets,priority="effect")
-
-sig <- subset(mitch_bl$enrichment_result,`p.adjustANOVA`<0.01)
-
-head(sig[order(-abs(sig$s.dist)),],30) %>%
-  kbl(caption="BLOOD: Top effect size pathways found with mitch after 1% FDR filtering") %>%
+head(top[order(-abs(top$s.dist)),],30) %>%
+  kbl(caption="BLOOD: Top effect size GOs found with mitch after 1% FDR filtering") %>%
   kable_paper("hover", full_width = F)
 
-mitch_gu <- mitch_calc(gum,genesets,priority="effect")
+# Barplot
+up <- head(subset(bl_mres1$enrichment_result,p.adjustANOVA<0.01 & s.dist>0),15)
+vup <- up$s.dist
+names(vup) <- up$set
+dn <- head(subset(bl_mres1$enrichment_result,p.adjustANOVA<0.01 & s.dist<0),15)
+vdn <- dn$s.dist
+names(vdn) <- dn$set
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.8,xlab="ES",main="Blood at assessment")
+mtext("GO")
 
-sig <- subset(mitch_gu$enrichment_result,`p.adjustANOVA`<0.01)
+bl_mres2 <- mitch_calc(bl_lim_m,reactome,priority="effect",cores=cores,minsetsize=5)
+bl_mres2tbl <- subset(bl_mres2$enrichment_result,p.adjustANOVA<0.01)
+top <- head(bl_mres2tbl,30)
 
-head(sig[order(-abs(sig$s.dist)),],30) %>%
-  kbl(caption="GUTHRIE: Top effect size pathways found with mitch after 1% FDR filtering") %>%
+head(top[order(-abs(top$s.dist)),],30) %>%
+  kbl(caption="BLOOD: Top effect size Reactome pathways found with mitch after 1% FDR filtering") %>%
   kable_paper("hover", full_width = F)
 
-mitch_bu <- mitch_calc(bum,genesets,priority="effect")
+# Barplot
+up <- head(subset(bl_mres2$enrichment_result,p.adjustANOVA<0.01 & s.dist>0),15)
+vup <- up$s.dist
+names(vup) <- up$set
+dn <- head(subset(bl_mres2$enrichment_result,p.adjustANOVA<0.01 & s.dist<0),15)
+vdn <- dn$s.dist
+names(vdn) <- dn$set
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Blood at assessment")
+mtext("Reactome")
 
-sig <- subset(mitch_bu$enrichment_result,`p.adjustANOVA`<0.01)
+## GUTHRIE
+gu_mres1 <- mitch_calc(gu_lim_m,go,priority="effect",cores=cores,minsetsize=5)
+gu_mres1tbl <- subset(gu_mres1$enrichment_result,p.adjustANOVA<0.01)
+top <- head(gu_mres1tbl,30)
 
-head(sig[order(-abs(sig$s.dist)),],30) %>%
-  kbl(caption="BUCCAL: Top effect size pathways found with mitch after 1% FDR filtering") %>%
+head(top[order(-abs(top$s.dist)),],30) %>%
+  kbl(caption="GUTHRIE: Top effect size GOs found with mitch after 1% FDR filtering") %>%
   kable_paper("hover", full_width = F)
 
-mitch_plots(res=mitch_bu,outfile="buccal_mitch_ados.pdf")
-mitch_report(res=mitch_bu,outfile="buccal_mitch_ados.html")
+# Barplot
+up <- head(subset(gu_mres1$enrichment_result,p.adjustANOVA<0.01 & s.dist>0),15)
+vup <- up$s.dist
+names(vup) <- up$set
+dn <- head(subset(gu_mres1$enrichment_result,p.adjustANOVA<0.01 & s.dist<0),15)
+vdn <- dn$s.dist
+names(vdn) <- dn$set
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.8,xlab="ES",main="Neonatal Guthrie card")
+mtext("GO")
 
-subset(mitch_bu$enrichment_result,p.adjustANOVA<0.01 & s.dist<0) %>%
-  kbl(caption="Reactome pathways with an inverse methylation association with ADOS in buccal swab samples.") %>%
+# reactome
+gu_mres2 <- mitch_calc(gu_lim_m,reactome,priority="effect",cores=cores,minsetsize=5)
+gu_mres2tbl <- subset(gu_mres2$enrichment_result,p.adjustANOVA<0.01)
+top <- head(gu_mres2tbl,30)
+
+head(top[order(-abs(top$s.dist)),],30) %>%
+  kbl(caption="GUTHRIE: Top effect size Reactome pathways found with mitch after 1% FDR filtering") %>%
   kable_paper("hover", full_width = F)
+
+# Barplot
+up <- head(subset(gu_mres2$enrichment_result,p.adjustANOVA<0.01 & s.dist>0),15)
+vup <- up$s.dist
+names(vup) <- up$set
+dn <- head(subset(gu_mres2$enrichment_result,p.adjustANOVA<0.01 & s.dist<0),15)
+vdn <- dn$s.dist
+names(vdn) <- dn$set
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Blood at assessment")
+mtext("Reactome")
+
+par(mar = c(5.1, 4.1, 4.1, 2.1))
 
 ```
 
@@ -321,18 +325,55 @@ rownames(m) <- m$Row.names
 m$Row.names = NULL
 colnames(m) <- c("bl","gu")
 m[is.na(m)] <- 0
-res <- mitch_calc(m, genesets, priority="effect")
-mitch_report(res,"blgu_mitch.html",overwrite=TRUE)
-mitch_plots(res=res,outfile="blgu_mitch_ados.pdf")
-sig <- subset(res$enrichment_result,p.adjustMANOVA<0.01)
+res1 <- mitch_calc(m, go, priority="effect",cores=cores)
+mitch_report(res1,"blgu_mitch_go.html",overwrite=TRUE)
+mitch_plots(res=res1,outfile="blgu_mitch_go_ados.pdf")
+sig1 <- subset(res1$enrichment_result,p.adjustMANOVA<0.01)
 
-head(sig[order(-abs(sig$s.dist)),],30) %>%
-  kbl(caption="Top pathways found with mitch (effect size after 1% FDR filtering)") %>%
+head(sig1[order(-abs(sig1$s.dist)),],30) %>%
+  kbl(caption="Top GOs found with mitch (effect size after 1% FDR filtering)") %>%
+  kable_paper("hover", full_width = F)
+
+res2 <- mitch_calc(m, reactome, priority="effect",cores=cores)
+mitch_report(res2,"blgu_mitch_reactome.html",overwrite=TRUE)
+mitch_plots(res=res2,outfile="blgu_mitch_reactome_ados.pdf")
+sig2 <- subset(res2$enrichment_result,p.adjustMANOVA<0.01)
+
+head(sig2[order(-abs(sig2$s.dist)),],30) %>%
+  kbl(caption="Top Reactomes found with mitch (effect size after 1% FDR filtering)") %>%
+  kable_paper("hover", full_width = F)
+
+```
+
+
+Top table of genes
+
+```{r,toptable1}
+
+rnk <- res1$ranked_profile
+
+tbl <- data.frame(table(gt$gene))
+
+toptab <- cbind(m,rnk)
+
+toptab$Row.names = NULL
+
+toptab$med <- apply(data.frame(toptab$bl,toptab$gu),1,median)
+
+toptab2 <- merge(toptab,tbl,by.x=0,by.y="Var1")
+
+toptab2 <- toptab2[order(toptab2$med),]
+
+toptab2 <- subset(toptab2,Freq>=5)
+
+head(toptab2,100) %>%
+  kbl(caption="Top genes with reducing methylation") %>%
   kable_paper("hover", full_width = F)
 
 ```
 
 Now look at the pathways with hypomethylation.
+HERENOW
 
 ```{r,hypo}
 
