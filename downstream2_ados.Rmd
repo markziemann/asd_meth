@@ -237,7 +237,7 @@ names(lsfari) <- "sfari"
 cores = 8
 
 ## BLOOD
-bl_mres1 <- mitch_calc(bl_lim_m,go,priority="effect",cores=cores,minsetsize=5)
+bl_mres1 <- mitch_calc(blm,go,priority="effect",cores=cores,minsetsize=5)
 bl_mres1tbl <- subset(bl_mres1$enrichment_result,p.adjustANOVA<0.01)
 top <- head(bl_mres1tbl,30)
 
@@ -255,7 +255,7 @@ names(vdn) <- dn$set
 barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.8,xlab="ES",main="Blood at assessment")
 mtext("GO")
 
-bl_mres2 <- mitch_calc(bl_lim_m,reactome,priority="effect",cores=cores,minsetsize=5)
+bl_mres2 <- mitch_calc(blm,reactome,priority="effect",cores=cores,minsetsize=5)
 bl_mres2tbl <- subset(bl_mres2$enrichment_result,p.adjustANOVA<0.01)
 top <- head(bl_mres2tbl,30)
 
@@ -274,7 +274,7 @@ barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Blood at
 mtext("Reactome")
 
 ## GUTHRIE
-gu_mres1 <- mitch_calc(gu_lim_m,go,priority="effect",cores=cores,minsetsize=5)
+gu_mres1 <- mitch_calc(gum,go,priority="effect",cores=cores,minsetsize=5)
 gu_mres1tbl <- subset(gu_mres1$enrichment_result,p.adjustANOVA<0.01)
 top <- head(gu_mres1tbl,30)
 
@@ -292,8 +292,14 @@ names(vdn) <- dn$set
 barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.8,xlab="ES",main="Neonatal Guthrie card")
 mtext("GO")
 
+pdf("ados_barplot_go.pdf")
+par(mar = c(5.1, 29.1, 4.1, 2.1))
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.7,xlab="ES",main="Neonatal Guthrie card")
+mtext("GO")
+dev.off()
+
 # reactome
-gu_mres2 <- mitch_calc(gu_lim_m,reactome,priority="effect",cores=cores,minsetsize=5)
+gu_mres2 <- mitch_calc(gum,reactome,priority="effect",cores=cores,minsetsize=5)
 gu_mres2tbl <- subset(gu_mres2$enrichment_result,p.adjustANOVA<0.01)
 top <- head(gu_mres2tbl,30)
 
@@ -310,6 +316,12 @@ vdn <- dn$s.dist
 names(vdn) <- dn$set
 barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Blood at assessment")
 mtext("Reactome")
+
+pdf("ados_barplot_reactome.pdf")
+par(mar = c(5.1, 29.1, 4.1, 2.1))
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.75,xlab="ES",main="Blood at assessment")
+mtext("Reactome")
+dev.off()
 
 par(mar = c(5.1, 4.1, 4.1, 2.1))
 
@@ -375,9 +387,9 @@ head(toptab2,100) %>%
 Now look at the pathways with hypomethylation.
 HERENOW
 
-```{r,hypo}
+```{r,hypo_go}
 
-hypo <- subset(res$enrichment_result,p.adjustMANOVA<0.01 & s.bl <0 & s.gu < 0 )
+hypo <- subset(res1$enrichment_result,p.adjustMANOVA<0.01 & s.bl <0 & s.gu < 0 )
 nrow(hypo)
 
 hypo <- hypo[nrow(hypo):1,]
@@ -393,7 +405,7 @@ legend("topright", inset=0, title="tissue",
   c("blood at assessment","neonatal Guthrie card"),
   fill=gray.colors(2), horiz=FALSE, cex=1)
 
-pdf("adosbarplot.pdf")
+pdf("adosbarplot_hypo_go.pdf")
 
 par(mar=c(4.1, 25.1, 5.1, 1.1))
 
@@ -411,12 +423,56 @@ dev.off()
 
 mar = c(5.1, 4.1, 4.1, 2.1)
 
+```
+
+Now with reactome.
+
+```{r,hypo_reactome}
+
+hypo <- subset(res2$enrichment_result,p.adjustMANOVA<0.01 & s.bl <0 & s.gu < 0 )
+nrow(hypo)
+
+hypo <- hypo[nrow(hypo):1,]
+
+par(mar=c(4.1, 25.1, 5.1, 1.1))
+
+barplot(t(abs(hypo[,c("s.bl","s.gu")])),
+  beside=TRUE,horiz=TRUE,las=1,names.arg=hypo$set,
+  col=gray.colors(2),
+  xlab="enrichment score")
+
+legend("topright", inset=0, title="tissue",
+  c("blood at assessment","neonatal Guthrie card"),
+  fill=gray.colors(2), horiz=FALSE, cex=1)
+
+pdf("adosbarplot_hypo_reactome.pdf")
+
+par(mar=c(4.1, 25.1, 5.1, 1.1))
+
+barplot(t(abs(hypo[,c("s.bl","s.gu")])),
+  beside=TRUE,horiz=TRUE,las=1,names.arg=hypo$set,
+  col=gray.colors(2),
+  xlab="enrichment score")
+
+legend("topright", inset=0, title="tissue",
+  c("blood at assessment","neonatal Guthrie card"),
+  fill=gray.colors(2), horiz=FALSE, cex=1)
+
+dev.off()
+
+
+mar = c(5.1, 4.1, 4.1, 2.1)
 
 ```
+
+
+
 
 Now look at metatropic glutamate/pheromone receptors.
 
 ```{r,glutamate}
+
+genesets <- reactome
 
 phero <- genesets[grep("pheromone",names(genesets))]
 phero
@@ -450,11 +506,14 @@ Make a heatmap of top TAS2R gene probes.
 
 ```{r,tar2r}
 
+
+
+
 colcolfunc <- colorRampPalette(c("yellow", "orange"))
 
 colcols <- colcolfunc(20)[bl_design[,"ADOS"]]
 
-phero_probes <- unlist(sets[which(names(sets) %in% phero[[1]])])
+phero_probes <- gt[which(gt$gene %in% phero[[1]]),"probe"]
 
 phero_mvals <- bl_mvals[rownames(bl_mvals) %in% phero_probes,]
 
@@ -480,7 +539,7 @@ lrand <-lapply(1:1034,function(i) { set.seed(i*1000) ; sample(rownames(m1),1000)
 names(lrand) <- paste("random",1:1034)
 lsets <- c(lsfari,lrand)
 
-sfarires2 <- mitch_calc(m1, lsets, priority="effect",cores=16,resrows=10)
+sfarires2 <- mitch_calc(m1, lsets, priority="effect",cores=1,resrows=10)
 
 head(sfarires2$enrichment_result) %>%
   kbl(caption = "Enrichment analysis of SFARI genes") %>%
@@ -499,5 +558,7 @@ For reproducibility
 ```{r,session}
 
 sessionInfo()
+
+save.image("downstream2_ados.Rdata")
 
 ```
