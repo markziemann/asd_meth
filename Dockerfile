@@ -40,6 +40,8 @@ RUN git clone https://github.com/markziemann/asd_meth.git
 COPY ASD_EPIC_DATA /asd_meth/ASD_EPIC_DATA
 COPY cp_asd_data/204375410103 /asd_meth/cp_asd_data/204375410103
 COPY cp_asd_data/204375410107 /asd_meth/cp_asd_data/204375410107
+COPY new.hgnc.table.rds /asd_meth
+COPY msigdb.v2023.2.Hs.symbols.gmt /asd_meth
 
 # Set the container working directory
 ENV DIRPATH /asd_meth
