@@ -47,6 +47,23 @@ It will contain all the results in the HTML and PDF files which includes figures
 docker cp $(docker ps -alq):/asd_meth .
 ```
 
+## Tracing scripts to figures
+
+All the figure panels and tables from the paper.
+
+| Data |  output |  script |
+| --- | --- | --- |
+| Fig 1A | no PDF, get the png from limma_blood.html and limma_guthrie.html | limma_blood.Rmd limma_guthrie.Rmd |
+| Fig 1B | pca_blood.pdf and pca_guthrie.pdf | limma_blood.Rmd limma_guthrie.Rmd |
+| Fig 2 | manhat_limma_bl.pdf manhat_limma_gu.pdf | downstream1_ados.Rmd |
+| Fig 3AD | hist_bl_ados.pdf hist_gu_ados.pdf | downstream2_ados.Rmd |
+| Fig 3EF | genedens_ados.pdf |  downstream2_ados.Rmd |
+| Table 2 | downstream2_ados.html | downstream2_ados.Rmd |
+| Fig 4A | blgu_mitch_go_ados.pdf | downstream2_ados.Rmd |
+| Fig 4B | adosbarplot_hypo_go.pdf | downstream2_ados.Rmd |
+| Fig 4C | blgu_mitch_go_ados.pdf | downstream2_ados.Rmd |
+| Fig 4D | bitter.pdf | downstream2_ados.Rmd |
+
 ## Reporting problems
 
 Please use github issues to report bugs.
