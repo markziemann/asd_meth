@@ -615,6 +615,181 @@ mitch_report(res=sfarires2,outfile="sfari_mitch_ados.html",overwrite=TRUE)
 
 ```
 
+## Buccal pathway analysis
+
+GO
+
+```{r,buccalgo}
+
+bumg <- mitch_calc(bum, go, priority="effect",cores=8)
+
+bumgres <- bumg$enrichment_result
+
+head(subset(bumgres,s.dist<0 ),10) %>%
+  kbl(caption="Buccal: Top gene sets with reducing methylation") %>%
+  kable_paper("hover", full_width = F)
+
+head(subset(bumgres,s.dist>0 ),10) %>%
+  kbl(caption="Buccal: Top gene sets with higher methylation") %>%
+  kable_paper("hover", full_width = F)
+
+mysets <- c("GOMF BITTER TASTE RECEPTOR ACTIVITY",
+"GOMF TYPE I INTERFERON RECEPTOR BINDING",
+"GOBP CELLULAR GLUCURONIDATION",
+"GOBP POSITIVE REGULATION OF PEPTIDYL SERINE PHOSPHORYLATION OF STAT PROTEIN",
+"GOMF ODORANT BINDING",
+"GOMF OLFACTORY RECEPTOR ACTIVITY",
+"GOBP URONIC ACID METABOLIC PROCESS")
+
+bumgres[which(bumgres$set %in% mysets),] %>%
+  kbl(caption="Selected gene sets in buccal samples") %>%
+  kable_paper("hover", full_width = F)
+
+MAX=max(bumg$ranked_profile)
+MIN=min(bumg$ranked_profile)
+
+par(mfrow=c(3,1))
+par(mar=c(4.1, 4.1, 5.1, 1.1))
+
+beeswarm(bumg$detailed_sets["GOMF BITTER TASTE RECEPTOR ACTIVITY"],
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+  abline(v=c(MIN,MAX),lty=2)
+mtext("GOMF BITTER TASTE RECEPTOR ACTIVITY (FDR=4.8e-8)",cex=0.7)
+
+beeswarm(bumg$detailed_sets["GOMF TYPE I INTERFERON RECEPTOR BINDING"],
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+  abline(v=c(MIN,MAX),lty=2)
+mtext("GOMF TYPE I INTERFERON RECEPTOR BINDING (FDR=5.1e-6)",cex=0.7)
+
+mygenes <- go[[which(names(go)=="GOBP CELLULAR GLUCURONIDATION")]]
+myranks <- bumg$ranked_profile[which(rownames(bumg$ranked_profile) %in% mygenes),]
+
+beeswarm(myranks,
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+mtext("GOBP CELLULAR GLUCURONIDATION (FDR=0.24)",cex=0.7)
+  abline(v=c(MIN,MAX),lty=2)
+
+pdf("buccal_go.pdf")
+par(mfrow=c(3,1))
+par(mar=c(4.1, 4.1, 5.1, 1.1))
+
+beeswarm(bumg$detailed_sets["GOMF BITTER TASTE RECEPTOR ACTIVITY"],
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+  abline(v=c(MIN,MAX),lty=2)
+mtext("GOMF BITTER TASTE RECEPTOR ACTIVITY (FDR=4.8e-8)",cex=0.7)
+
+beeswarm(bumg$detailed_sets["GOMF TYPE I INTERFERON RECEPTOR BINDING"],
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+  abline(v=c(MIN,MAX),lty=2)
+mtext("GOMF TYPE I INTERFERON RECEPTOR BINDING (FDR=5.1e-6)",cex=0.7)
+
+mygenes <- go[[which(names(go)=="GOBP CELLULAR GLUCURONIDATION")]]
+myranks <- bumg$ranked_profile[which(rownames(bumg$ranked_profile) %in% mygenes),]
+
+beeswarm(myranks,
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+mtext("GOBP CELLULAR GLUCURONIDATION (FDR=0.24)",cex=0.7)
+  abline(v=c(MIN,MAX),lty=2)
+dev.off()
+
+```
+
+REACTOME
+
+```{r,buccalreactome}
+
+bumr <- mitch_calc(bum, reactome, priority="effect",cores=8)
+
+bumrres <- bumr$enrichment_result
+
+head(subset(bumrres,s.dist<0 ),10) %>%
+  kbl(caption="Buccal: Top gene sets with reducing methylation") %>%
+  kable_paper("hover", full_width = F)
+
+head(subset(bumrres,s.dist>0 ),10) %>%
+  kbl(caption="Buccal: Top gene sets with higher methylation") %>%
+  kable_paper("hover", full_width = F)
+
+mysets <- c("Class C/3 (Metabotropic glutamate/pheromone receptors)",
+"Scavenging of heme from plasma",
+"Sensory perception of sweet, bitter, and umami (glutamate) taste",
+"Glucuronidation",
+"Sensory perception of taste",
+"Digestion",
+"Aspirin ADME",
+"Expression and translocation of olfactory receptors",
+"Olfactory Signaling Pathway",
+"Dectin-2 family")
+
+bumrres[which(bumrres$set %in% mysets),] %>%
+  kbl(caption="Selected gene sets in buccal samples") %>%
+  kable_paper("hover", full_width = F)
+
+MAX=max(bumr$ranked_profile)
+MIN=min(bumr$ranked_profile)
+
+par(mfrow=c(3,1))
+par(mar=c(4.1, 4.1, 5.1, 1.1))
+
+beeswarm(bumr$detailed_sets["Class C/3 (Metabotropic glutamate/pheromone receptors)"],
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+  abline(v=c(MIN,MAX),lty=2)
+mtext("Class C/3 (Metabotropic glutamate/pheromone receptors) (FDR=1.4e-5)",cex=0.7)
+
+mygenes <- reactome[[which(names(reactome)=="Expression and translocation of olfactory receptors")]]
+myranks <- bumr$ranked_profile[which(rownames(bumr$ranked_profile) %in% mygenes),]
+beeswarm(myranks,
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+mtext("Expression and translocation of olfactory receptors (FDR=8.5e-43)",cex=0.7)
+  abline(v=c(MIN,MAX),lty=2)
+
+mygenes <- reactome[[which(names(reactome)=="Olfactory Signaling Pathway")]]
+myranks <- bumr$ranked_profile[which(rownames(bumr$ranked_profile) %in% mygenes),]
+beeswarm(myranks,
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+mtext("Olfactory Signaling Pathway (FDR=5.4e-42)",cex=0.7)
+  abline(v=c(MIN,MAX),lty=2)
+
+pdf("buccal_reactome.pdf")
+par(mfrow=c(3,1))
+par(mar=c(4.1, 4.1, 5.1, 1.1))
+
+beeswarm(bumr$detailed_sets["Class C/3 (Metabotropic glutamate/pheromone receptors)"],
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+  abline(v=c(MIN,MAX),lty=2)
+mtext("Class C/3 (Metabotropic glutamate/pheromone receptors) (FDR=1.4e-5)",cex=0.7)
+
+mygenes <- reactome[[which(names(reactome)=="Expression and translocation of olfactory receptors")]]
+myranks <- bumr$ranked_profile[which(rownames(bumr$ranked_profile) %in% mygenes),]
+beeswarm(myranks,
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+mtext("Expression and translocation of olfactory receptors (FDR=8.5e-43)",cex=0.7)
+  abline(v=c(MIN,MAX),lty=2)
+
+mygenes <- reactome[[which(names(reactome)=="Olfactory Signaling Pathway")]]
+myranks <- bumr$ranked_profile[which(rownames(bumr$ranked_profile) %in% mygenes),]
+beeswarm(myranks,
+  horizontal=TRUE,labels="", xlim=c(MIN,MAX), bty="n",
+  xlab="ranked score in buccal swab")
+mtext("Olfactory Signaling Pathway (FDR=5.4e-42)",cex=0.7)
+  abline(v=c(MIN,MAX),lty=2)
+
+dev.off()
+
+
+```
+
 ## Session information
 
 For reproducibility
