@@ -237,6 +237,7 @@ names(lsfari) <- "sfari"
 cores = 8
 
 ## BLOOD
+# go
 bl_mres1 <- mitch_calc(blm,go,priority="effect",cores=cores,minsetsize=5)
 bl_mres1tbl <- subset(bl_mres1$enrichment_result,p.adjustANOVA<0.01)
 top <- head(bl_mres1tbl,30)
@@ -255,6 +256,14 @@ names(vdn) <- dn$set
 barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.8,xlab="ES",main="Blood at assessment")
 mtext("GO")
 
+pdf("ados_barplot_bl_go.pdf")
+par(mar = c(5.1, 29.1, 4.1, 2.1))
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Blood at assessment")
+mtext("GO")
+dev.off()
+
+
+# reactome
 bl_mres2 <- mitch_calc(blm,reactome,priority="effect",cores=cores,minsetsize=5)
 bl_mres2tbl <- subset(bl_mres2$enrichment_result,p.adjustANOVA<0.01)
 top <- head(bl_mres2tbl,30)
@@ -273,7 +282,14 @@ names(vdn) <- dn$set
 barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Blood at assessment")
 mtext("Reactome")
 
+pdf("ados_barplot_bl_reactome.pdf")
+par(mar = c(5.1, 29.1, 4.1, 2.1))
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Blood at assessment")
+mtext("Reactome")
+dev.off()
+
 ## GUTHRIE
+# GO
 gu_mres1 <- mitch_calc(gum,go,priority="effect",cores=cores,minsetsize=5)
 gu_mres1tbl <- subset(gu_mres1$enrichment_result,p.adjustANOVA<0.01)
 top <- head(gu_mres1tbl,30)
@@ -292,7 +308,7 @@ names(vdn) <- dn$set
 barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.8,xlab="ES",main="Neonatal Guthrie card")
 mtext("GO")
 
-pdf("ados_barplot_go.pdf")
+pdf("ados_barplot_gu_go.pdf")
 par(mar = c(5.1, 29.1, 4.1, 2.1))
 barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.7,xlab="ES",main="Neonatal Guthrie card")
 mtext("GO")
@@ -314,12 +330,12 @@ names(vup) <- up$set
 dn <- head(subset(gu_mres2$enrichment_result,p.adjustANOVA<0.01 & s.dist<0),15)
 vdn <- dn$s.dist
 names(vdn) <- dn$set
-barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Blood at assessment")
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.9,xlab="ES",main="Neonatal Guthrie card")
 mtext("Reactome")
 
-pdf("ados_barplot_reactome.pdf")
+pdf("ados_barplot_gu_reactome.pdf")
 par(mar = c(5.1, 29.1, 4.1, 2.1))
-barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.75,xlab="ES",main="Blood at assessment")
+barplot(sort(c(vup,vdn)),horiz=TRUE,las=1,cex.names=0.75,xlab="ES",main="Neonatal Guthrie card")
 mtext("Reactome")
 dev.off()
 
@@ -357,7 +373,6 @@ head(sig2[order(-abs(sig2$s.dist)),],30) %>%
 
 ```
 
-
 Top table of genes
 
 ```{r,toptable1}
@@ -385,7 +400,6 @@ head(toptab2,100) %>%
 ```
 
 Now look at the pathways with hypomethylation.
-HERENOW
 
 ```{r,hypo_go}
 
@@ -393,15 +407,16 @@ hypo <- subset(res1$enrichment_result,p.adjustMANOVA<0.01 & s.bl <0 & s.gu < 0 )
 nrow(hypo)
 
 hypo <- hypo[nrow(hypo):1,]
+hypo <- tail(hypo,15)
 
-par(mar=c(4.1, 25.1, 5.1, 1.1))
+par(mar=c(9.1, 25.1, 5.1, 1.1))
 
 barplot(t(abs(hypo[,c("s.bl","s.gu")])),
   beside=TRUE,horiz=TRUE,las=1,names.arg=hypo$set,
-  col=gray.colors(2),
+  col=gray.colors(2), cex.names=0.8,
   xlab="enrichment score")
 
-legend("topright", inset=0, title="tissue",
+legend("bottomright", inset=0, title="tissue",
   c("blood at assessment","neonatal Guthrie card"),
   fill=gray.colors(2), horiz=FALSE, cex=1)
 
@@ -425,7 +440,61 @@ mar = c(5.1, 4.1, 4.1, 2.1)
 
 ```
 
-Now with reactome.
+Now look at bitter taste receptors.
+
+```{r,bitter1}
+
+genesets <- go
+
+bitter <- genesets[grep("GOMF BITTER",names(genesets))]
+bitter
+rnk2 <- rnk[which(rownames(rnk) %in% bitter[[1]]),]
+
+plot(rnk2,main=names(bitter),xlim=c(-21569,4146),ylim=c(-17678,8037),
+  xlab="Rank in blood at assessment",
+  ylab="Rank in neonatal Guthrie card",
+  cex=1.5,pch=19,col="lightgray")
+
+text(rnk2,labels=rownames(rnk2))
+
+abline(v=0,h=0,lwd=2,lty=2)
+
+pdf("bitter.pdf")
+
+plot(rnk2,main=names(bitter),xlim=c(-21569,4146),ylim=c(-17678,8037),
+  xlab="Rank in blood at assessment",
+  ylab="Rank in neonatal Guthrie card",
+  cex=1.5,pch=19,col="lightgray")
+
+text(rnk2,labels=rownames(rnk2))
+
+abline(v=0,h=0,lwd=2,lty=2)
+
+dev.off()
+
+```
+
+Heatmap
+
+```{r,bitter2}
+
+colcolfunc <- colorRampPalette(c("yellow", "orange"))
+
+colcols <- colcolfunc(20)[bl_design[,"ADOS"]]
+
+bitter_probes <- gt[which(gt$gene %in% bitter[[1]]),"probe"]
+
+bitter_mvals <- bl_mvals[rownames(bl_mvals) %in% bitter_probes,]
+
+colfunc <- colorRampPalette(c("blue", "white", "red"))
+
+heatmap.2(bitter_mvals,trace="none",col=colfunc(25), margins = c(5,8), scale="row",
+  main="Bitter taste receptors",
+  ColSideColors = colcols )
+
+```
+
+## Now with reactome
 
 ```{r,hypo_reactome}
 
@@ -433,6 +502,7 @@ hypo <- subset(res2$enrichment_result,p.adjustMANOVA<0.01 & s.bl <0 & s.gu < 0 )
 nrow(hypo)
 
 hypo <- hypo[nrow(hypo):1,]
+hypo <- tail(hypo,15)
 
 par(mar=c(4.1, 25.1, 5.1, 1.1))
 
@@ -460,17 +530,13 @@ legend("topright", inset=0, title="tissue",
 
 dev.off()
 
-
 mar = c(5.1, 4.1, 4.1, 2.1)
 
 ```
 
-
-
-
 Now look at metatropic glutamate/pheromone receptors.
 
-```{r,glutamate}
+```{r,phero}
 
 genesets <- reactome
 
@@ -506,9 +572,6 @@ Make a heatmap of top TAS2R gene probes.
 
 ```{r,tar2r}
 
-
-
-
 colcolfunc <- colorRampPalette(c("yellow", "orange"))
 
 colcols <- colcolfunc(20)[bl_design[,"ADOS"]]
@@ -523,8 +586,9 @@ heatmap.2(phero_mvals,trace="none",col=colfunc(25), margins = c(5,8), scale="row
   main="Class C/3 (Metabotropic glutamate/pheromone receptors) probes",
   ColSideColors = colcols )
 
-
 ```
+
+## SFARI
 
 Now let's take a look at the SFARI gene list.
 
