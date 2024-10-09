@@ -645,6 +645,14 @@ bumgres[which(bumgres$set %in% mysets),] %>%
   kbl(caption="Selected gene sets in buccal samples") %>%
   kable_paper("hover", full_width = F)
 
+nrow(subset(bumgres,p.adjustANOVA<0.01))
+nrow(subset(bumgres,p.adjustANOVA<0.01 & s.dist>0))
+nrow(subset(bumgres,p.adjustANOVA<0.01 & s.dist<0))
+subset(bumgres,p.adjustANOVA<0.01 & s.dist<0)
+
+head(subset(bumgres,p.adjustANOVA<0.01 & s.dist<0),10)
+
+
 MAX=max(bumg$ranked_profile)
 MIN=min(bumg$ranked_profile)
 
@@ -707,6 +715,11 @@ REACTOME
 bumr <- mitch_calc(bum, reactome, priority="effect",cores=8)
 
 bumrres <- bumr$enrichment_result
+
+nrow(subset(bumrres,p.adjustANOVA<0.01))
+nrow(subset(bumrres,p.adjustANOVA<0.01 & s.dist>0))
+nrow(subset(bumrres,p.adjustANOVA<0.01 & s.dist<0))
+subset(bumrres,p.adjustANOVA<0.01 & s.dist<0)
 
 head(subset(bumrres,s.dist<0 ),10) %>%
   kbl(caption="Buccal: Top gene sets with reducing methylation") %>%
