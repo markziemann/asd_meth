@@ -63,6 +63,7 @@ All the figure panels and tables from the paper.
 | Fig 4B | adosbarplot_hypo_go.pdf | downstream2_ados.Rmd |
 | Fig 4C | blgu_mitch_go_ados.pdf | downstream2_ados.Rmd |
 | Fig 4D | bitter.pdf | downstream2_ados.Rmd |
+| Fig 5 | buccal_go.pdf | downstream2_ados.Rmd |
 
 ## Reporting problems
 
