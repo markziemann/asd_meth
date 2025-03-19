@@ -234,7 +234,7 @@ sfari <- readLines("sfari.txt")
 lsfari <- list(sfari)
 names(lsfari) <- "sfari"
 
-cores = 8
+cores = 4
 
 ## BLOOD
 # go
@@ -625,11 +625,16 @@ bumg <- mitch_calc(bum, go, priority="effect",cores=8)
 
 bumgres <- bumg$enrichment_result
 
-head(subset(bumgres,s.dist<0 ),10) %>%
+nrow(subset(bumgres, p.adjustANOVA<0.01))
+nrow(subset(bumgres,s.dist>0 & p.adjustANOVA<0.01 ))
+nrow(subset(bumgres,s.dist<0 & p.adjustANOVA<0.01 ))
+
+
+subset(bumgres,s.dist<0 & p.adjustANOVA<0.01 ) %>%
   kbl(caption="Buccal: Top gene sets with reducing methylation") %>%
   kable_paper("hover", full_width = F)
 
-head(subset(bumgres,s.dist>0 ),10) %>%
+subset(bumgres,s.dist>0 & p.adjustANOVA<0.01 ) %>%
   kbl(caption="Buccal: Top gene sets with higher methylation") %>%
   kable_paper("hover", full_width = F)
 
